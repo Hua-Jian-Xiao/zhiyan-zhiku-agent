@@ -209,7 +209,7 @@ async function copyContent(): Promise<void> {
           </button>
           <span class="text-[#d8cebd]">/</span>
           <span class="font-mono text-[7px] uppercase tracking-[0.06em] text-[#a29582]">
-            {{ message.citations.length }} citations · mock sse
+            {{ message.citations.length }} citations · live sse
           </span>
         </div>
       </div>
@@ -225,7 +225,7 @@ async function copyContent(): Promise<void> {
   padding: 3px 6px;
   color: #8d806e;
   font-family: var(--app-mono);
-  font-size: 7.5px;
+  font-size: 10px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 0;

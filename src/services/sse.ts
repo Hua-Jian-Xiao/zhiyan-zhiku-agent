@@ -29,9 +29,8 @@ function parseEventBlock(block: string): SseMessage | null {
 }
 
 /**
- * A small SSE parser for ReadableStream. It mirrors the browser EventSource
- * framing rules closely enough for this mock stream and can be reused against
- * a real text/event-stream response later.
+ * A small SSE parser for ReadableStream. It follows the browser EventSource
+ * framing rules closely enough for POST-based streaming Agent responses.
  */
 export async function consumeSseStream(
   stream: ReadableStream<Uint8Array>,

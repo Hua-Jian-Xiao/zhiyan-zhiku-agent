@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Component } from 'vue'
 import {
+  ArrowRight,
   Collection,
   DataAnalysis,
   Document,
@@ -13,10 +14,15 @@ import {
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/PageHeader.vue'
 import StatePanel from '@/components/feedback/StatePanel.vue'
-import { fetchKnowledgeBase } from '@/services/mockApi'
+import CourseCard from '@/components/knowledge/CourseCard.vue'
+import DocumentManager from '@/components/knowledge/DocumentManager.vue'
+import KnowledgePointDrawer from '@/components/knowledge/KnowledgePointDrawer.vue'
+import { fetchKnowledgeOverview } from '@/services/api'
 import { useRagStore, MIN_THRESHOLD, MAX_THRESHOLD } from '@/stores/rag'
-import { defaultRagConfig } from '@/mock'
+import { useSystemStore } from '@/stores/system'
+import { DEFAULT_RAG_CONFIG } from '@/constants/rag'
 import type {
+  DocumentJumpRequest,
   KnowledgeBaseOverview,
   KnowledgePoint,
   RetrievalMode,
@@ -25,16 +31,22 @@ import { isAbortError } from '@/utils/async'
 import { retrievalModeOptions } from '@/utils/rag'
 
 const ragStore = useRagStore()
+const systemStore = useSystemStore()
 
 const overview = ref<KnowledgeBaseOverview | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
 const isSaving = ref(false)
-const activeTab = ref<'courses' | 'points'>('courses')
+const activeTab = ref<'courses' | 'points' | 'documents'>('courses')
 const keyword = ref('')
 const draftTopK = ref(ragStore.config.topK)
 const draftThreshold = ref(ragStore.config.threshold)
 const draftMode = ref<RetrievalMode>(ragStore.config.retrievalMode)
+const listSection = ref<HTMLElement | null>(null)
+const pointDrawerOpen = ref(false)
+const selectedPoint = ref<KnowledgePoint | null>(null)
+const documentJump = ref<DocumentJumpRequest | null>(null)
+let documentJumpNonce = 0
 let controller: AbortController | null = null
 
 interface StatItem {
@@ -45,6 +57,8 @@ interface StatItem {
   icon: Component
   iconClass: string
   barClass: string
+  target: 'courses' | 'points' | 'documents'
+  targetLabel: string
 }
 
 const stats = computed<StatItem[]>(() => [
@@ -52,28 +66,34 @@ const stats = computed<StatItem[]>(() => [
     label: '课程数量',
     value: String(overview.value?.courseCount ?? 0),
     suffix: '门',
-    hint: '全部课程已建立检索索引',
+    hint: '课程已建索引，部分知识点待补充文档',
     icon: Collection,
     iconClass: 'bg-indigo-50 text-indigo-500 border-indigo-100',
     barClass: 'bg-indigo-400',
+    target: 'courses',
+    targetLabel: '课程列表',
   },
   {
     label: '知识点数量',
     value: String(overview.value?.knowledgePointCount ?? 0),
     suffix: '个',
-    hint: '覆盖 8 个计算机学科方向',
+    hint: `覆盖 ${overview.value?.courseCount ?? 0} 门课程的知识索引`,
     icon: DataAnalysis,
     iconClass: 'bg-cyan-50 text-cyan-500 border-cyan-100',
     barClass: 'bg-cyan-400',
+    target: 'points',
+    targetLabel: '知识点列表',
   },
   {
     label: '向量片段数量',
     value: (overview.value?.chunkCount ?? 0).toLocaleString('en-US'),
     suffix: '条',
-    hint: '平均每个知识点 4 个片段',
+    hint: '课程文档已生成向量片段，部分知识点待补充文档',
     icon: Document,
     iconClass: 'bg-emerald-50 text-emerald-500 border-emerald-100',
     barClass: 'bg-emerald-400',
+    target: 'documents',
+    targetLabel: '文档库',
   },
   {
     label: '最后更新时间',
@@ -83,6 +103,8 @@ const stats = computed<StatItem[]>(() => [
     icon: Timer,
     iconClass: 'bg-amber-50 text-amber-500 border-amber-100',
     barClass: 'bg-amber-400',
+    target: 'documents',
+    targetLabel: '文档库',
   },
 ])
 
@@ -117,11 +139,11 @@ const filteredKnowledgePoints = computed(() => {
   )
 })
 
-const activeCount = computed(() =>
-  activeTab.value === 'courses'
-    ? filteredCourses.value.length
-    : filteredKnowledgePoints.value.length,
-)
+const activeCount = computed(() => {
+  if (activeTab.value === 'courses') return filteredCourses.value.length
+  if (activeTab.value === 'points') return filteredKnowledgePoints.value.length
+  return overview.value?.documentCount ?? 0
+})
 
 const searchPlaceholder = computed(() =>
   activeTab.value === 'courses'
@@ -137,7 +159,7 @@ async function loadKnowledgeBase(showToast = false): Promise<void> {
   errorMessage.value = ''
 
   try {
-    const data = await fetchKnowledgeBase(currentController.signal)
+    const data = await fetchKnowledgeOverview(currentController.signal)
     if (currentController.signal.aborted) return
     overview.value = data
     if (showToast) ElMessage.success('知识库索引已刷新')
@@ -150,9 +172,51 @@ async function loadKnowledgeBase(showToast = false): Promise<void> {
   }
 }
 
-function switchTab(tab: 'courses' | 'points'): void {
+function switchTab(tab: 'courses' | 'points' | 'documents'): void {
   activeTab.value = tab
   keyword.value = ''
+}
+
+function handleStatClick(stat: StatItem): void {
+  switchTab(stat.target)
+  requestAnimationFrame(() => {
+    listSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+function openPoint(point: KnowledgePoint): void {
+  selectedPoint.value = point
+  pointDrawerOpen.value = true
+}
+
+function jumpToDocuments(request: Omit<DocumentJumpRequest, 'nonce'>): void {
+  pointDrawerOpen.value = false
+  switchTab('documents')
+  documentJumpNonce += 1
+  documentJump.value = { ...request, nonce: documentJumpNonce }
+  requestAnimationFrame(() => {
+    listSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+function handleOpenDocument(payload: {
+  documentId: string
+  courseId: string
+  documentTitle: string
+}): void {
+  jumpToDocuments({
+    courseId: payload.courseId,
+    documentId: payload.documentId,
+    documentTitle: payload.documentTitle,
+  })
+}
+
+function handleOpenDocuments(payload: { courseId: string }): void {
+  jumpToDocuments({ courseId: payload.courseId })
+}
+
+function handleDocumentJumpConsumed(): void {
+  documentJump.value = null
 }
 
 function formatTopK(value: number): string {
@@ -166,22 +230,37 @@ function formatThreshold(value: number): string {
 async function saveConfig(): Promise<void> {
   if (isSaving.value || !configDirty.value) return
   isSaving.value = true
-  await new Promise((resolve) => window.setTimeout(resolve, 320))
   ragStore.updateConfig({
     topK: draftTopK.value,
     threshold: draftThreshold.value,
     retrievalMode: draftMode.value,
   })
-  isSaving.value = false
-  ElMessage.success('RAG 检索参数已同步到 Agent 与检索调试页')
+  try {
+    await ragStore.persistToServer()
+    ElMessage.success('RAG 检索参数已同步到 Agent 与检索调试页')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '保存检索配置失败')
+  } finally {
+    isSaving.value = false
+  }
 }
 
-function resetConfig(): void {
-  draftTopK.value = defaultRagConfig.topK
-  draftThreshold.value = defaultRagConfig.threshold
-  draftMode.value = defaultRagConfig.retrievalMode
-  ragStore.updateConfig({ ...defaultRagConfig })
-  ElMessage.success('已恢复默认检索参数')
+async function resetConfig(): Promise<void> {
+  ragStore.resetConfig()
+  draftTopK.value = ragStore.config.topK
+  draftThreshold.value = ragStore.config.threshold
+  draftMode.value = ragStore.config.retrievalMode
+  try {
+    await ragStore.persistToServer()
+    ElMessage.success('已恢复默认检索参数')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '恢复默认参数失败')
+  }
+}
+
+async function handleDocumentsChanged(): Promise<void> {
+  await loadKnowledgeBase()
+  await systemStore.loadStats().catch(() => null)
 }
 
 function difficultyClass(difficulty: KnowledgePoint['difficulty']): string {
@@ -190,8 +269,16 @@ function difficultyClass(difficulty: KnowledgePoint['difficulty']): string {
   return 'border-amber-100 bg-amber-50 text-amber-600'
 }
 
-onMounted(() => {
-  void loadKnowledgeBase()
+onMounted(async () => {
+  await loadKnowledgeBase()
+  try {
+    await ragStore.loadFromServer()
+    draftTopK.value = ragStore.config.topK
+    draftThreshold.value = ragStore.config.threshold
+    draftMode.value = ragStore.config.retrievalMode
+  } catch {
+    // Keep the local cached values when the backend is unreachable.
+  }
 })
 
 onBeforeUnmount(() => {
@@ -203,7 +290,6 @@ onBeforeUnmount(() => {
   <div class="page-scroll">
     <div class="page-container">
       <PageHeader
-        eyebrow="Knowledge Operations"
         title="知识库管理"
         description="管理计算机学科课程索引，调整 RAG 的召回范围、相似度门槛与检索模式。参数会实时同步到 Agent 工作台和检索调试页。"
       >
@@ -281,7 +367,12 @@ onBeforeUnmount(() => {
           <div
             v-for="stat in stats"
             :key="stat.label"
-            class="surface-card group relative overflow-hidden p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-soft"
+            class="surface-card group relative cursor-pointer overflow-hidden p-4 transition duration-200 hover:-translate-y-0.5 hover:border-[#c9b9a4] hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9a463c] active:scale-[0.995]"
+            role="button"
+            tabindex="0"
+            :aria-label="`跳转到${stat.targetLabel}`"
+            @click="handleStatClick(stat)"
+            @keydown.enter.prevent="handleStatClick(stat)"
           >
             <div class="flex items-start justify-between">
               <div class="grid h-8 w-8 place-items-center rounded-lg border" :class="stat.iconClass">
@@ -303,12 +394,15 @@ onBeforeUnmount(() => {
             <p class="mt-2 flex items-center gap-1.5 text-[8.5px] text-slate-400">
               <span class="h-1 w-1 rounded-full" :class="stat.barClass" />
               {{ stat.hint }}
+              <span class="ml-auto shrink-0 text-[8px] font-medium text-[#9a463c] opacity-0 transition group-hover:opacity-100">
+                {{ stat.targetLabel }} →
+              </span>
             </p>
           </div>
         </div>
 
         <div class="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_356px]">
-          <section class="surface-card min-w-0 overflow-hidden">
+          <section ref="listSection" class="surface-card min-w-0 scroll-mt-5 overflow-hidden">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <div class="flex flex-wrap items-center gap-3">
                 <div class="app-tab-bar">
@@ -332,13 +426,23 @@ onBeforeUnmount(() => {
                     知识点列表
                     <span class="app-tab-count">{{ overview.knowledgePoints.length }}</span>
                   </button>
+                  <button
+                    type="button"
+                    class="app-tab"
+                    :class="{ 'is-active': activeTab === 'documents' }"
+                    @click="switchTab('documents')"
+                  >
+                    <el-icon :size="10"><Document /></el-icon>
+                    文档库
+                    <span class="app-tab-count">{{ overview.documentCount }}</span>
+                  </button>
                 </div>
                 <span class="hidden text-[8px] text-slate-400 sm:inline">
-                  {{ activeTab === 'courses' ? `${overview.documentCount} 份课程文档` : '知识点索引抽样' }}
+                  {{ activeTab === 'courses' ? `${overview.knowledgePointCount} 个课程知识点` : activeTab === 'points' ? '知识点索引' : '原文与向量索引' }}
                 </span>
               </div>
 
-              <div class="app-search w-full sm:w-[236px]">
+              <div v-if="activeTab !== 'documents'" class="app-search w-full sm:w-[236px]">
                 <el-icon :size="11" class="shrink-0 text-slate-400"><Search /></el-icon>
                 <input
                   v-model="keyword"
@@ -350,53 +454,19 @@ onBeforeUnmount(() => {
             </div>
 
             <div v-if="activeTab === 'courses'" class="p-4">
+              <div
+                v-if="filteredCourses.length"
+                class="mb-3 flex items-center justify-between gap-3 text-[9px] text-slate-400"
+              >
+                <p>点击任意课程卡片，跳转学堂在线对应课程</p>
+                <span class="shrink-0">{{ filteredCourses.length }} 门</span>
+              </div>
               <div v-if="filteredCourses.length" class="grid gap-3 md:grid-cols-2">
-                <article
+                <CourseCard
                   v-for="course in filteredCourses"
                   :key="course.id"
-                  class="group border border-[#ded4c4] border-t-2 border-t-[#bfb29e] bg-[#fffdf8] p-3.5 transition-all duration-200 hover:border-[#b9ab97] hover:border-t-[#7d302f]"
-                >
-                  <div class="flex items-start gap-3">
-                    <span
-                      class="grid h-9 w-9 shrink-0 place-items-center font-serif text-[11px] font-semibold"
-                      :style="{
-                        color: course.color,
-                        backgroundColor: `${course.color}12`,
-                        border: `1px solid ${course.color}1f`,
-                      }"
-                    >
-                      {{ course.shortName }}
-                    </span>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-center justify-between gap-2">
-                        <h3 class="truncate font-serif text-[12px] font-semibold text-slate-700">
-                          {{ course.name }}
-                        </h3>
-                        <span class="shrink-0 font-mono text-[7.5px] text-slate-300">
-                          {{ course.code }}
-                        </span>
-                      </div>
-                      <p class="mt-0.5 truncate text-[8px] text-slate-400">
-                        {{ course.teacher }} · 更新于 {{ course.updatedAt }}
-                      </p>
-                    </div>
-                  </div>
-                  <p class="mt-2.5 line-clamp-2 text-[9px] leading-4 text-slate-500">
-                    {{ course.description }}
-                  </p>
-                  <div class="mt-3 flex items-center gap-1.5">
-                    <span class="rounded-md border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[8px] text-slate-500">
-                      {{ course.knowledgePointCount }} 知识点
-                    </span>
-                    <span class="rounded-md border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[8px] text-slate-500">
-                      {{ course.documentCount }} 文档
-                    </span>
-                    <span class="ml-auto flex items-center gap-1 text-[7.5px] text-emerald-500">
-                      <span class="h-1 w-1 rounded-full bg-emerald-400" />
-                      已索引
-                    </span>
-                  </div>
-                </article>
+                  :course="course"
+                />
               </div>
               <StatePanel
                 v-else
@@ -409,22 +479,26 @@ onBeforeUnmount(() => {
               />
             </div>
 
-            <div v-else>
+            <div v-else-if="activeTab === 'points'">
               <div
                 v-if="filteredKnowledgePoints.length"
                 class="divide-y divide-slate-50"
               >
-                <div
+                <button
                   v-for="point in filteredKnowledgePoints"
                   :key="point.id"
-                  class="grid grid-cols-[minmax(0,1fr)_82px_56px] items-center gap-3 px-5 py-3 transition hover:bg-slate-50/60 sm:grid-cols-[minmax(0,1fr)_150px_70px_60px]"
+                  type="button"
+                  class="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_82px_56px] items-center gap-3 px-5 py-3 text-left transition hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#9a463c] sm:grid-cols-[minmax(0,1fr)_150px_70px_60px]"
+                  @click="openPoint(point)"
                 >
                   <div class="flex min-w-0 items-center gap-2.5">
-                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-slate-50 text-slate-400">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-slate-50 text-slate-400 transition group-hover:bg-white group-hover:text-[#9a463c]">
                       <el-icon :size="11"><Document /></el-icon>
                     </span>
                     <div class="min-w-0">
-                      <p class="truncate text-[10px] font-medium text-slate-700">{{ point.name }}</p>
+                      <p class="truncate text-[10px] font-medium text-slate-700 group-hover:text-[#7d302f]">
+                        {{ point.name }}
+                      </p>
                       <p class="mt-0.5 flex items-center gap-1.5 truncate text-[8px] text-slate-400">
                         <span class="font-mono text-indigo-400">{{ point.id.toUpperCase() }}</span>
                         <span class="text-slate-200">·</span>
@@ -439,10 +513,16 @@ onBeforeUnmount(() => {
                   >
                     {{ point.difficulty }}
                   </span>
-                  <span class="justify-self-end font-mono text-[7.5px] text-slate-400">
+                  <span class="flex items-center justify-self-end gap-1 font-mono text-[7.5px] text-slate-400">
                     {{ point.updatedAt.slice(5) }}
+                    <el-icon
+                      :size="9"
+                      class="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#9a463c]"
+                    >
+                      <ArrowRight />
+                    </el-icon>
                   </span>
-                </div>
+                </button>
               </div>
               <StatePanel
                 v-else
@@ -454,12 +534,24 @@ onBeforeUnmount(() => {
               />
             </div>
 
-            <div class="flex items-center justify-between border-t border-slate-100 px-5 py-2.5">
+            <div v-else>
+              <DocumentManager
+                :courses="overview.courses"
+                :jump-request="documentJump"
+                @changed="handleDocumentsChanged"
+                @jump-consumed="handleDocumentJumpConsumed"
+              />
+            </div>
+
+            <div
+              v-if="activeTab !== 'documents'"
+              class="flex items-center justify-between border-t border-slate-100 px-5 py-2.5"
+            >
               <span class="text-[8px] text-slate-400">
                 当前显示 {{ activeCount }} 条{{ activeTab === 'courses' ? '课程' : '知识点' }}
               </span>
               <span class="font-mono text-[7.5px] text-slate-300">
-                MOCK KNOWLEDGE INDEX · 1,284 VECTORS
+                LIVE KNOWLEDGE INDEX · {{ overview.chunkCount }} VECTORS
               </span>
             </div>
           </section>
@@ -609,5 +701,11 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </div>
+    <KnowledgePointDrawer
+      v-model="pointDrawerOpen"
+      :point="selectedPoint"
+      @open-document="handleOpenDocument"
+      @open-documents="handleOpenDocuments"
+    />
   </div>
 </template>

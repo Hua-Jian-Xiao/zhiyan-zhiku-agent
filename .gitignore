@@ -7,11 +7,29 @@ dist-ssr
 !.env.example
 .DS_Store
 *.log
+*.tsbuildinfo
 .vscode/*
 !.vscode/extensions.json
 .idea
-*.tsbuildinfo
 
-# 本地版本快照，不提交
+# Python / Django 后端
+server/.venv/
+server/.env
+server/.env.*
+!server/.env.example
+server/db.sqlite3
+server/media/
+server/staticfiles/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 本地版本快照与压缩包
 /2/
-/2.zip
+/3-*/
+*.zip
+
+# 临时验证产物
+.ui-check/
+.e2e-check/
+.gitee-check/

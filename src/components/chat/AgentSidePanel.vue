@@ -10,6 +10,7 @@ import {
 } from '@element-plus/icons-vue'
 import type { ChatMessage } from '@/types'
 import { useRagStore } from '@/stores/rag'
+import { useSystemStore } from '@/stores/system'
 import { getRetrievalModeLabel } from '@/utils/rag'
 
 const props = defineProps<{
@@ -18,6 +19,7 @@ const props = defineProps<{
 }>()
 
 const ragStore = useRagStore()
+const systemStore = useSystemStore()
 
 const trace = computed(() => props.latestMessage?.trace ?? null)
 const citations = computed(() => props.latestMessage?.citations ?? [])
@@ -70,11 +72,11 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
             </span>
             <div>
               <p class="font-serif text-[11px] font-medium text-[#f3e8d7]">RAG-Agent</p>
-              <p class="mt-0.5 font-mono text-[6.5px] tracking-[0.08em] text-[#817463]">v2.4 / LOCAL MOCK</p>
+              <p class="mt-0.5 font-mono text-[6.5px] tracking-[0.08em] text-[#817463]">v2.4 / LIVE RAG</p>
             </div>
           </div>
           <span class="border border-[#4c4032] px-1.5 py-0.5 font-mono text-[6.5px] tracking-[0.1em] text-[#9dbaa2]">
-            ONLINE
+            {{ systemStore.health?.database === 'ok' ? 'ONLINE' : 'OFFLINE' }}
           </span>
         </div>
 
@@ -127,18 +129,18 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
         <p class="mt-2.5 text-[10px] font-medium text-slate-700">计算机学科知识空间</p>
         <div class="mt-2 flex items-center gap-4">
           <div>
-            <span class="font-mono text-[15px] font-semibold text-slate-800">8</span>
+            <span class="font-serif text-[17px] font-medium text-slate-800">{{ systemStore.stats?.courseCount ?? '—' }}</span>
             <span class="ml-1 text-[8px] text-slate-400">门课程</span>
           </div>
           <div class="h-3 w-px bg-slate-100" />
           <div>
-            <span class="font-mono text-[15px] font-semibold text-slate-800">326</span>
+            <span class="font-serif text-[17px] font-medium text-slate-800">{{ systemStore.stats?.knowledgePointCount ?? '—' }}</span>
             <span class="ml-1 text-[8px] text-slate-400">个知识点</span>
           </div>
         </div>
         <div class="mt-2.5 flex items-center gap-1.5 text-[8px] text-slate-400">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          索引健康 · 3 分钟前同步
+          <span class="h-1.5 w-1.5 rounded-full" :class="systemStore.health?.database === 'ok' ? 'bg-emerald-400' : 'bg-rose-400'" />
+          {{ systemStore.health?.database === 'ok' ? `索引健康 · ${systemStore.lastSyncedAt} 同步` : '索引服务离线' }}
         </div>
       </section>
 
@@ -226,7 +228,7 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
           </span>
           <span class="min-w-0 flex-1">
             <span class="block text-[8.5px] font-medium text-slate-600">查看知识图谱</span>
-            <span class="mt-0.5 block text-[7px] text-slate-400">23 个节点 · 客观依赖关系</span>
+            <span class="mt-0.5 block text-[7px] text-slate-400">{{ systemStore.stats?.graphNodeCount ?? '—' }} 个节点 · 客观依赖关系</span>
           </span>
           <el-icon :size="9" class="text-slate-400"><ArrowRight /></el-icon>
         </router-link>
@@ -235,7 +237,7 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
 
     <footer class="shrink-0 border-t border-slate-100 px-4 py-2.5">
       <p class="text-center font-mono text-[7.5px] tracking-wide text-slate-300">
-        MOCK RAG PIPELINE · LOCAL DEMO
+        LIVE RAG PIPELINE · SERVER EDITION
       </p>
     </footer>
   </aside>

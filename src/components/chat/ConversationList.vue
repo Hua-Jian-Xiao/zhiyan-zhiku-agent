@@ -154,9 +154,9 @@ function messageCount(conversation: Conversation): number {
       <div class="flex items-center justify-between font-mono text-[7px] uppercase tracking-[0.08em] text-[#a29582]">
         <span class="flex items-center gap-1.5">
           <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
-          Local archive
+          Server archive
         </span>
-        <span>SSE MOCK</span>
+        <span>LIVE SSE</span>
       </div>
     </footer>
   </div>

@@ -1,63 +1,20 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { ChatMessage, Conversation } from '@/types'
 import { createId } from '@/utils/id'
-import { readStorage, writeStorage } from '@/utils/storage'
 import { truncate } from '@/utils/format'
+import {
+  clearConversation as clearConversationRequest,
+  createConversation as createConversationRequest,
+  deleteConversation as deleteConversationRequest,
+  fetchConversations,
+} from '@/services/api'
 
 export const DEFAULT_CONVERSATION_TITLE = '新的学习会话'
-const STORAGE_KEY = 'zhiyan.chat.state'
-
-interface PersistedChatState {
-  conversations: Conversation[]
-  activeId: string | null
-}
-
-function makeConversation(title = DEFAULT_CONVERSATION_TITLE): Conversation {
-  const now = Date.now()
-  return {
-    id: createId('conv'),
-    title,
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-  }
-}
-
-function sanitizeConversations(conversations: Conversation[]): Conversation[] {
-  return conversations.map((conversation) => ({
-    ...conversation,
-    messages: conversation.messages.map((message) => {
-      if (message.status !== 'streaming') return message
-      return {
-        ...message,
-        status: message.content ? 'done' : 'error',
-        stopped: true,
-        error: message.content ? undefined : '上一次生成被中断，请重试',
-      }
-    }),
-  }))
-}
-
-function loadInitialState(): PersistedChatState {
-  const persisted = readStorage<PersistedChatState | null>(STORAGE_KEY, null)
-  if (persisted && Array.isArray(persisted.conversations) && persisted.conversations.length > 0) {
-    const conversations = sanitizeConversations(persisted.conversations)
-    const activeExists = conversations.some((conversation) => conversation.id === persisted.activeId)
-    return {
-      conversations,
-      activeId: activeExists ? persisted.activeId : conversations[0]?.id ?? null,
-    }
-  }
-
-  const conversation = makeConversation()
-  return { conversations: [conversation], activeId: conversation.id }
-}
 
 export const useChatStore = defineStore('chat', () => {
-  const initial = loadInitialState()
-  const conversations = ref<Conversation[]>(initial.conversations)
-  const activeId = ref<string | null>(initial.activeId)
+  const conversations = ref<Conversation[]>([])
+  const activeId = ref<string | null>(null)
   const isStreaming = ref(false)
   const streamingConversationId = ref<string | null>(null)
   const streamingMessageId = ref<string | null>(null)
@@ -75,25 +32,45 @@ export const useChatStore = defineStore('chat', () => {
     return [...messages].reverse().find((message) => message.role === 'assistant') ?? null
   })
 
+  async function hydrateFromServer(): Promise<void> {
+    const response = await fetchConversations()
+    conversations.value = response.conversations
+    if (!conversations.value.some((conversation) => conversation.id === activeId.value)) {
+      activeId.value = sortedConversations.value[0]?.id ?? null
+    }
+  }
+
   function getConversation(conversationId: string): Conversation | undefined {
     return conversations.value.find((conversation) => conversation.id === conversationId)
   }
 
-  function createConversation(title = DEFAULT_CONVERSATION_TITLE): Conversation {
-    const conversation = makeConversation(title)
-    conversations.value.unshift(conversation)
+  async function createConversation(title = DEFAULT_CONVERSATION_TITLE): Promise<Conversation> {
+    const conversation = await createConversationRequest({
+      id: createId('conv'),
+      title,
+    })
+    conversations.value = [conversation, ...conversations.value]
     activeId.value = conversation.id
     return conversation
   }
 
-  function deleteConversation(conversationId: string): void {
-    if (isStreaming.value && streamingConversationId.value === conversationId) return
+  async function deleteConversation(conversationId: string): Promise<void> {
+    await deleteConversationRequest(conversationId)
     conversations.value = conversations.value.filter(
       (conversation) => conversation.id !== conversationId,
     )
     if (activeId.value === conversationId) {
       activeId.value = sortedConversations.value[0]?.id ?? null
     }
+  }
+
+  async function clearConversation(conversationId: string): Promise<void> {
+    await clearConversationRequest(conversationId)
+    const conversation = getConversation(conversationId)
+    if (!conversation) return
+    conversation.messages = []
+    conversation.title = DEFAULT_CONVERSATION_TITLE
+    conversation.updatedAt = Date.now()
   }
 
   function selectConversation(conversationId: string): void {
@@ -133,12 +110,10 @@ export const useChatStore = defineStore('chat', () => {
     conversation.updatedAt = Date.now()
   }
 
-  function clearConversation(conversationId: string): void {
+  function updateConversationTitle(conversationId: string, title: string): void {
     const conversation = getConversation(conversationId)
-    if (!conversation) return
-    conversation.messages = []
-    conversation.title = DEFAULT_CONVERSATION_TITLE
-    conversation.updatedAt = Date.now()
+    if (!conversation || !title) return
+    conversation.title = title
   }
 
   function beginStreaming(conversationId: string, messageId: string): void {
@@ -153,21 +128,6 @@ export const useChatStore = defineStore('chat', () => {
     streamingMessageId.value = null
   }
 
-  let persistTimer: number | undefined
-  watch(
-    [conversations, activeId],
-    () => {
-      window.clearTimeout(persistTimer)
-      persistTimer = window.setTimeout(() => {
-        writeStorage(STORAGE_KEY, {
-          conversations: conversations.value,
-          activeId: activeId.value,
-        } satisfies PersistedChatState)
-      }, 180)
-    },
-    { deep: true },
-  )
-
   return {
     conversations,
     activeId,
@@ -178,14 +138,16 @@ export const useChatStore = defineStore('chat', () => {
     sortedConversations,
     activeMessages,
     lastAssistantMessage,
+    hydrateFromServer,
     getConversation,
     createConversation,
     deleteConversation,
+    clearConversation,
     selectConversation,
     appendMessage,
     updateMessage,
     removeMessage,
-    clearConversation,
+    updateConversationTitle,
     beginStreaming,
     endStreaming,
   }

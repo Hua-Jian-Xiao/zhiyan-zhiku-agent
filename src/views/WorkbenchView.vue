@@ -17,18 +17,21 @@ import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ConversationList from '@/components/chat/ConversationList.vue'
 import AgentSidePanel from '@/components/chat/AgentSidePanel.vue'
 import StatePanel from '@/components/feedback/StatePanel.vue'
-import { starterPrompts } from '@/mock'
+import { starterPrompts } from '@/constants/app'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useRagStore } from '@/stores/rag'
-import { createInitialTrace } from '@/services/mockAgentServer'
+import { useSystemStore } from '@/stores/system'
+import { createInitialTrace } from '@/services/agentTrace'
 import { streamAgentReply, type AgentStreamEvent } from '@/services/agentService'
+import { deleteMessage } from '@/services/api'
 import type { ChatMessage as ChatMessageType, Conversation } from '@/types'
 import { isAbortError } from '@/utils/async'
 import { createId } from '@/utils/id'
 
 const chatStore = useChatStore()
 const ragStore = useRagStore()
+const systemStore = useSystemStore()
 const authStore = useAuthStore()
 
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -115,12 +118,16 @@ function reloadWorkspace(): void {
   window.location.reload()
 }
 
-function handleCreateConversation(): void {
+async function handleCreateConversation(): Promise<void> {
   if (!guardStreaming()) return
-  chatStore.createConversation()
-  mobileListOpen.value = false
-  autoScroll.value = true
-  scrollToBottom()
+  try {
+    await chatStore.createConversation()
+    mobileListOpen.value = false
+    autoScroll.value = true
+    scrollToBottom()
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '新建会话失败')
+  }
 }
 
 function handleSelectConversation(conversationId: string): void {
@@ -148,8 +155,12 @@ async function handleDeleteConversation(conversation: Conversation): Promise<voi
   } catch {
     return
   }
-  chatStore.deleteConversation(conversation.id)
-  ElMessage.success('会话已删除')
+  try {
+    await chatStore.deleteConversation(conversation.id)
+    ElMessage.success('会话已删除')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '删除会话失败')
+  }
 }
 
 async function handleClearConversation(): Promise<void> {
@@ -166,8 +177,12 @@ async function handleClearConversation(): Promise<void> {
   } catch {
     return
   }
-  chatStore.clearConversation(conversation.id)
-  scrollToBottom()
+  try {
+    await chatStore.clearConversation(conversation.id)
+    scrollToBottom()
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '清空会话失败')
+  }
 }
 
 function applyStreamEvent(
@@ -215,18 +230,28 @@ function applyStreamEvent(
         content: message.content + event.text,
       })
       break
+    case 'title':
+      chatStore.updateConversationTitle(conversationId, event.title)
+      break
     case 'done':
       chatStore.updateMessage(conversationId, messageId, {
         status: 'done',
         latencyMs: event.meta.latencyMs,
       })
+      if (event.meta.title) {
+        chatStore.updateConversationTitle(conversationId, event.meta.title)
+      }
       break
     default:
       break
   }
 }
 
-async function runAgent(conversationId: string, query: string): Promise<void> {
+async function runAgent(
+  conversationId: string,
+  query: string,
+  userMessageId: string,
+): Promise<void> {
   const conversation = chatStore.getConversation(conversationId)
   if (!conversation) return
 
@@ -250,10 +275,14 @@ async function runAgent(conversationId: string, query: string): Promise<void> {
   try {
     await streamAgentReply(
       {
+        conversationId,
         query,
         topK: ragStore.config.topK,
         threshold: ragStore.config.threshold,
         retrievalMode: ragStore.config.retrievalMode,
+        userMessageId,
+        assistantMessageId: assistantMessage.id,
+        conversationTitle: conversation.title,
       },
       (event) => applyStreamEvent(conversationId, assistantMessage.id, event),
       controller.signal,
@@ -288,7 +317,15 @@ async function handleSend(rawText: string): Promise<void> {
   if (!text) return
   if (!guardStreaming()) return
 
-  const conversation = chatStore.activeConversation ?? chatStore.createConversation()
+  let conversation = chatStore.activeConversation
+  if (!conversation) {
+    try {
+      conversation = await chatStore.createConversation()
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '新建会话失败')
+      return
+    }
+  }
   const userMessage: ChatMessageType = {
     id: createId('msg'),
     role: 'user',
@@ -300,7 +337,7 @@ async function handleSend(rawText: string): Promise<void> {
   chatStore.appendMessage(conversation.id, userMessage)
   autoScroll.value = true
   scrollToBottom()
-  await runAgent(conversation.id, text)
+  await runAgent(conversation.id, text, userMessage.id)
 }
 
 function handleQuickPrompt(text: string): void {
@@ -324,18 +361,29 @@ async function handleRetry(message: ChatMessageType): Promise<void> {
     ElMessage.error('找不到对应的原始问题，请重新输入')
     return
   }
+  try {
+    await deleteMessage(message.id)
+  } catch {
+    // The local retry should still work if the failed message was not persisted.
+  }
   chatStore.removeMessage(conversation.id, message.id)
-  await runAgent(conversation.id, previousUser.content)
+  await runAgent(conversation.id, previousUser.content, previousUser.id)
 }
 
 onMounted(async () => {
   try {
-    await new Promise((resolve) => window.setTimeout(resolve, 280))
-    if (!chatStore.conversations.length && !chatStore.activeConversation) {
-      chatStore.createConversation()
+    await chatStore.hydrateFromServer()
+    await systemStore.loadStats().catch(() => null)
+    await ragStore.loadFromServer().catch(() => null)
+    if (!chatStore.conversations.length) {
+      await chatStore.createConversation()
+    } else if (!chatStore.activeConversation) {
+      chatStore.selectConversation(chatStore.conversations[0].id)
     }
-  } catch {
-    bootError.value = '工作台初始化失败，请刷新页面后重试'
+    scrollToBottom()
+  } catch (error) {
+    bootError.value =
+      error instanceof Error ? error.message : '工作台初始化失败，请确认后端已启动'
   } finally {
     isBooting.value = false
   }
@@ -505,7 +553,8 @@ onBeforeUnmount(() => {
                   今天想研究什么？
                 </h1>
                 <p class="mx-auto mt-3 max-w-[470px] text-[10.5px] leading-6 text-[#766b5b]">
-                  我会从 8 门计算机课程、326 个知识点中检索证据，
+                  我会从 {{ systemStore.stats?.courseCount ?? '—' }} 门计算机课程、
+                  {{ systemStore.stats?.knowledgePointCount ?? '—' }} 个知识点中检索证据，
                   用可追溯的引用陪你完成一次深度探索。
                 </p>
 
@@ -542,7 +591,7 @@ onBeforeUnmount(() => {
                   <span class="text-[#d8cebd]">|</span>
                   <span>{{ ragStore.configLabel }}</span>
                   <span class="text-[#d8cebd]">|</span>
-                  <span>MOCK SSE</span>
+                  <span>LIVE SSE</span>
                 </div>
               </div>
             </div>

@@ -13,9 +13,10 @@ import {
 import PageHeader from '@/components/PageHeader.vue'
 import StatePanel from '@/components/feedback/StatePanel.vue'
 import RetrievalResultCard from '@/components/rag/RetrievalResultCard.vue'
-import { retrieveKnowledge } from '@/services/mockApi'
-import { ragSampleQueries } from '@/mock'
+import { retrieveKnowledge } from '@/services/api'
+import { ragSampleQueries } from '@/constants/app'
 import { useRagStore, MIN_THRESHOLD, MAX_THRESHOLD } from '@/stores/rag'
+import { useSystemStore } from '@/stores/system'
 import type { RetrievalMode, RetrievalResponse } from '@/types'
 import { isAbortError } from '@/utils/async'
 import {
@@ -24,6 +25,7 @@ import {
 } from '@/utils/rag'
 
 const ragStore = useRagStore()
+const systemStore = useSystemStore()
 
 const query = ref('机器学习需要哪些前置知识？')
 const isLoading = ref(false)
@@ -115,6 +117,7 @@ async function handleSearch(): Promise<void> {
     )
     if (currentController.signal.aborted) return
     response.value = result
+    void ragStore.persistToServer().catch(() => null)
   } catch (error) {
     if (!isAbortError(error)) {
       errorMessage.value = error instanceof Error ? error.message : '检索失败，请稍后重试'
@@ -156,14 +159,13 @@ onBeforeUnmount(() => {
   <div class="page-scroll">
     <div class="page-container">
       <PageHeader
-        eyebrow="RAG Playground"
         title="RAG 检索调试"
         description="输入问题，查看召回片段的原文、相似度分数、来源课程与知识点 ID。所有参数与知识库管理页共享，便于评审理解 RAG 的内部机制。"
       >
         <template #actions>
           <span class="hidden items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-medium text-emerald-600 sm:inline-flex">
             <span class="h-1.5 w-1.5 animate-soft-pulse rounded-full bg-emerald-400" />
-            Vector Index Ready
+            {{ systemStore.stats ? 'Live Index Ready' : 'Checking Index' }}
           </span>
           <el-button :disabled="!response" @click="clearResults">清空结果</el-button>
         </template>
@@ -516,7 +518,8 @@ onBeforeUnmount(() => {
               />
 
               <p class="pt-1 text-center font-mono text-[7.5px] leading-4 text-slate-300">
-                MOCK RETRIEVAL · EMBEDDING 768d · HYBRID / VECTOR / KEYWORD · RESULTS ARE DETERMINISTIC
+                LIVE RETRIEVAL · {{ systemStore.health?.embedding.provider ?? 'local' }}
+                {{ systemStore.health?.embedding.dim ?? '—' }}d · HYBRID / VECTOR / KEYWORD
               </p>
             </div>
 
@@ -540,7 +543,7 @@ onBeforeUnmount(() => {
 .rag-sample-chip {
   padding: 2px 1px;
   color: #6f6456;
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1.6;
   text-align: left;
   background: transparent;
@@ -571,12 +574,12 @@ onBeforeUnmount(() => {
   border: 1px solid #d8cebd;
   border-radius: 0;
   font-family: var(--app-mono);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .pipeline-step b {
   color: #7d302f;
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .empty-feature {

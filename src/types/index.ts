@@ -8,6 +8,7 @@ export interface UserProfile {
 
 export interface AuthSession {
   token: string
+  refresh?: string
   user: UserProfile
   signedAt: number
 }
@@ -26,7 +27,12 @@ export interface Course {
   name: string
   shortName: string
   teacher: string
+  school: string
   description: string
+  category: string
+  coverUrl: string
+  sourceUrl: string
+  popularity: number
   knowledgePointCount: number
   documentCount: number
   color: string
@@ -37,9 +43,38 @@ export interface KnowledgePoint {
   id: string
   name: string
   course: string
+  courseId: string
+  courseSourceUrl: string
+  courseCoverUrl: string
   chapter: string
+  chapterNo: number
   difficulty: '入门' | '进阶' | '高阶'
+  description: string
+  tags: string[]
+  chunkCount: number
   updatedAt: string
+}
+
+export interface KnowledgePointChunk {
+  id: string
+  title: string
+  chapter: string
+  source: string
+  documentId: string
+  documentTitle: string
+  content: string
+  ordinal: number
+}
+
+export interface KnowledgePointDetail extends KnowledgePoint {
+  chunks: KnowledgePointChunk[]
+}
+
+export interface DocumentJumpRequest {
+  courseId?: string
+  documentId?: string
+  documentTitle?: string
+  nonce: number
 }
 
 export interface KnowledgeBaseOverview {
@@ -170,41 +205,61 @@ export interface KnowledgeGraphData {
   categories: KnowledgeGraphCategory[]
 }
 
-export interface NcfUser {
+export interface DocumentItem {
   id: string
-  name: string
-  avatar: string
-  color: string
-  stage: string
-  interests: string[]
-  recent: string[]
-}
-
-export interface NcfItem {
-  id: string
+  courseId: string
+  courseName: string
   title: string
-  type: '课程' | '知识点' | '专题'
-  category: string
-  tags: string[]
-  description: string
-  popularity: number
+  sourceName: string
+  sourceType: string
+  status: 'pending' | 'processing' | 'ready' | 'failed'
+  chunkCount: number
+  byteSize: number
+  createdAt: number
+  updatedAt: number
+  errorMessage: string | null
 }
 
-export interface NcfRecommendation {
-  rank: number
-  item: NcfItem
-  score: number
-  reason: string
+export interface DocumentListResponse {
+  items: DocumentItem[]
+  total: number
 }
 
-export interface NcfResult {
-  user: NcfUser
-  recommendations: NcfRecommendation[]
-  latencyMs: number
-  modelVersion: string
+export interface KnowledgePointListResponse {
+  items: KnowledgePoint[]
+  total: number
+}
+
+export interface PublicStats {
+  courseCount: number
+  knowledgePointCount: number
+  chunkCount: number
+  documentCount: number
+  graphNodeCount: number
+  graphEdgeCount: number
+  lastSyncedAt: string
+}
+
+export interface HealthStatus {
+  status: string
+  database: string
+  llm: {
+    configured: boolean
+    provider: string
+    model: string
+  }
+  embedding: {
+    provider: string
+    dim: number
+  }
+  version: string
 }
 
 export interface AgentRunMeta {
   latencyMs: number
   citedCount: number
+  messageId?: string
+  runId?: string
+  conversationId?: string
+  title?: string
 }

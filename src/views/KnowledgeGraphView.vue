@@ -21,7 +21,7 @@ import {
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatePanel from '@/components/feedback/StatePanel.vue'
-import { fetchKnowledgeGraph } from '@/services/mockApi'
+import { fetchGraph } from '@/services/api'
 import type {
   GraphCategory,
   KnowledgeGraphData,
@@ -131,7 +131,7 @@ async function loadGraph(showToast = false): Promise<void> {
   errorMessage.value = ''
 
   try {
-    const data = await fetchKnowledgeGraph(currentController.signal)
+    const data = await fetchGraph(currentController.signal)
     if (currentController.signal.aborted) return
     graphData.value = data
     if (!hadData) {
@@ -235,11 +235,11 @@ function buildChartOption(): EChartsOption {
         const dependentsCount = data.edges.filter((edge) => edge.source === node.id).length
         return `<div style="display:flex;align-items:center;gap:6px;">
             <span style="width:6px;height:6px;border-radius:99px;background:${category?.color ?? '#7d302f'};"></span>
-            <span style="font-size:9px;color:#94a3b8;">${category?.label ?? ''}</span>
+            <span style="font-size:10px;color:#94a3b8;">${category?.label ?? ''}</span>
           </div>
           <div style="margin-top:4px;font-weight:600;color:#f8fafc;font-size:12px;">${node.name}</div>
           <div style="margin-top:5px;color:#94a3b8;font-size:10px;line-height:1.6;">${truncate(node.description, 64)}</div>
-          <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(194,178,156,0.18);color:#9d8f7c;font-size:9px;">
+          <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(194,178,156,0.18);color:#9d8f7c;font-size:10px;">
             前置 ${node.prerequisites.length} · 直接后继 ${dependentsCount} · 点击查看详情
           </div>`
       },
@@ -402,9 +402,8 @@ onBeforeUnmount(() => {
   <div class="page-scroll">
     <div class="page-container">
       <PageHeader
-        eyebrow="Knowledge Dependencies"
         title="知识图谱"
-        description="以力导向图呈现计算机学科知识点之间的客观先修关系。图谱只描述课程知识结构，不包含推荐权重。"
+        description="以力导向图呈现计算机学科知识点之间的客观先修关系。图谱只描述课程知识结构，不包含个性化数据。"
       >
         <template #actions>
           <span
@@ -755,7 +754,7 @@ onBeforeUnmount(() => {
               数据边界说明
             </p>
             <p class="mt-1.5 text-[8.5px] leading-4 text-slate-400">
-              图谱仅编码课程大纲中的客观先修关系，不包含推荐排序。NCF推荐Demo为独立附属演示，不会写回图谱。
+              图谱仅编码课程大纲中的客观先修关系，不包含任何个性化学习数据。
             </p>
           </div>
         </aside>
@@ -781,7 +780,7 @@ onBeforeUnmount(() => {
   padding: 3px 1px;
   color: #a29582;
   font-family: var(--app-mono);
-  font-size: 7.5px;
+  font-size: 10px;
   background: transparent;
   border: 0;
   border-bottom: 1px solid transparent;
@@ -807,7 +806,7 @@ onBeforeUnmount(() => {
   gap: 5px;
   padding: 3px 7px;
   color: #6f6456;
-  font-size: 8px;
+  font-size: 10px;
   background: #fbf7ee;
   border: 1px solid #ded4c4;
   border-radius: 0;

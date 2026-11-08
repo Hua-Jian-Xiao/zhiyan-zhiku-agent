@@ -76,4 +76,16 @@ router.afterEach((to) => {
   document.title = title ? `${title} · 智研知库` : '智研知库 · RAG 智能学习 Agent'
 })
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('zhiyan:unauthorized', () => {
+    const current = router.currentRoute.value
+    if (current.name !== 'login') {
+      void router.replace({
+        name: 'login',
+        query: { redirect: current.fullPath },
+      })
+    }
+  })
+}
+
 export default router

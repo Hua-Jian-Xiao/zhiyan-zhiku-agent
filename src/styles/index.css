@@ -211,8 +211,8 @@ a {
 
 .folio {
   font-family: var(--app-mono);
-  font-size: 8px;
-  letter-spacing: 0.16em;
+  font-size: 10px;
+  letter-spacing: 0.1em;
   color: #9b8f7d;
   text-transform: uppercase;
 }
@@ -222,6 +222,27 @@ a {
     linear-gradient(rgba(125, 48, 47, 0.02), rgba(125, 48, 47, 0)),
     var(--app-paper);
   border: 1px solid var(--app-line);
+}
+
+/* Readability floor: editorial micro-labels should never fall below 10px. */
+[class*='text-[6px]'],
+[class*='text-[6.5px]'],
+[class*='text-[7px]'],
+[class*='text-[7.5px]'],
+[class*='text-[8px]'],
+[class*='text-[8.5px]'] {
+  font-size: 10px !important;
+  line-height: 1.45;
+}
+
+[class*='text-[9px]'],
+[class*='text-[9.5px]'] {
+  font-size: 10.5px !important;
+}
+
+[class*='text-[10px]'],
+[class*='text-[10.5px]'] {
+  font-size: 11px !important;
 }
 
 /* Editorial geometry: keep circles for avatars and status dots only. */
@@ -255,7 +276,7 @@ a {
   gap: 6px;
   padding: 7px 0 8px;
   color: #8b7f6c;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   background: transparent;
   border: 0;
@@ -290,7 +311,7 @@ a {
   color: #a29582;
   background: transparent;
   font-family: var(--app-mono);
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .app-tab.is-active .app-tab-count {
@@ -464,6 +485,11 @@ a {
   background: #f8f3e9;
 }
 
+.knowledge-point-drawer .el-drawer__body,
+.document-chunk-drawer .el-drawer__body {
+  padding: 0;
+}
+
 .el-popover.el-popper {
   border: 1px solid #c9bdab;
   border-radius: 1px;
@@ -479,7 +505,7 @@ a {
   padding: 5px 8px;
   background: #211c17 !important;
   font-family: var(--app-sans, var(--app-font));
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.02em;
 }
 
@@ -622,8 +648,8 @@ a {
   right: 10px;
   color: #7c7062;
   font-family: var(--app-mono);
-  font-size: 7px;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  letter-spacing: 0.08em;
   content: 'CODE / LISTING';
 }
 

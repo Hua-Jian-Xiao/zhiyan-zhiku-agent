@@ -1,0 +1,9 @@
+Django>=6.0,<6.1
+djangorestframework>=3.17,<3.18
+djangorestframework-simplejwt>=5.5,<6
+django-cors-headers>=4.9,<5
+python-dotenv>=1.2,<2
+PyMySQL>=1.1,<2
+openai>=2.0,<3
+pypdf>=5.0,<6
+python-docx>=1.1,<2

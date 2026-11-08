@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import { MagicStick, Promotion, VideoPause } from '@element-plus/icons-vue'
-import { quickPrompts } from '@/mock'
+import { quickPrompts } from '@/constants/app'
 import type { RetrievalMode } from '@/types'
 import { getRetrievalModeLabel } from '@/utils/rag'
 
@@ -136,7 +136,7 @@ function stop(): void {
     <p class="mt-2 text-center font-mono text-[7px] leading-4 tracking-[0.04em] text-[#a29582]">
       回答由 RAG Agent 基于课程知识库生成，引用内容请以来源卡片为准
       <span class="mx-1 text-[#d8cebd]">/</span>
-      Mock SSE Stream
+      Live SSE Stream
     </p>
   </div>
 </template>
@@ -150,7 +150,7 @@ function stop(): void {
   padding: 3px 1px;
   color: #6f6456;
   font-family: var(--app-font);
-  font-size: 8.5px;
+  font-size: 10.5px;
   font-weight: 500;
   background: transparent;
   border: 0;
@@ -248,7 +248,7 @@ function stop(): void {
   padding: 0 10px;
   color: #8e3d35;
   font-family: var(--app-mono);
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.04em;
   background: #f6e9e4;
   border: 1px solid #d8b8b1;

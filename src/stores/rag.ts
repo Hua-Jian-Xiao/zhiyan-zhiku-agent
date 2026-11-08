@@ -1,24 +1,25 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { defaultRagConfig } from '@/mock'
 import type { RagConfig, RetrievalMode } from '@/types'
+import { DEFAULT_RAG_CONFIG, MAX_THRESHOLD, MIN_THRESHOLD } from '@/constants/rag'
 import { getRetrievalModeLabel } from '@/utils/rag'
 import { readStorage, writeStorage } from '@/utils/storage'
+import { fetchRagConfig, saveRagConfig } from '@/services/api'
+
+export { MAX_THRESHOLD, MIN_THRESHOLD }
 
 const STORAGE_KEY = 'zhiyan.rag.config'
-export const MIN_THRESHOLD = 0.3
-export const MAX_THRESHOLD = 0.95
 const RETRIEVAL_MODES: RetrievalMode[] = ['hybrid', 'vector', 'keyword']
 
 function normalizeConfig(value: RagConfig | null): RagConfig {
-  if (!value) return { ...defaultRagConfig }
-  const topK = Number.isFinite(value.topK) ? Math.round(value.topK) : defaultRagConfig.topK
+  if (!value) return { ...DEFAULT_RAG_CONFIG }
+  const topK = Number.isFinite(value.topK) ? Math.round(value.topK) : DEFAULT_RAG_CONFIG.topK
   const threshold = Number.isFinite(value.threshold)
     ? value.threshold
-    : defaultRagConfig.threshold
+    : DEFAULT_RAG_CONFIG.threshold
   const retrievalMode = RETRIEVAL_MODES.includes(value.retrievalMode)
     ? value.retrievalMode
-    : defaultRagConfig.retrievalMode
+    : DEFAULT_RAG_CONFIG.retrievalMode
   return {
     topK: Math.min(10, Math.max(1, topK)),
     threshold: Math.min(MAX_THRESHOLD, Math.max(MIN_THRESHOLD, threshold)),
@@ -41,7 +42,18 @@ export const useRagStore = defineStore('rag', () => {
   }
 
   function resetConfig(): void {
-    config.value = { ...defaultRagConfig }
+    config.value = { ...DEFAULT_RAG_CONFIG }
+  }
+
+  async function loadFromServer(): Promise<void> {
+    const remote = await fetchRagConfig()
+    config.value = normalizeConfig(remote)
+  }
+
+  async function persistToServer(): Promise<RagConfig> {
+    const saved = await saveRagConfig(config.value)
+    config.value = normalizeConfig(saved)
+    return config.value
   }
 
   watch(
@@ -57,5 +69,7 @@ export const useRagStore = defineStore('rag', () => {
     configLabel,
     updateConfig,
     resetConfig,
+    loadFromServer,
+    persistToServer,
   }
 })

@@ -1,211 +1,292 @@
-# 智研知库
+# 智研知库 · Zhiyan Knowledge Agent
 
 > 面向计算机学科的 RAG 智能学习 Agent 工作台
 
-一套可直接运行的 Vue 3 纯前端演示项目。整体采用 Editorial Magazine Style · 学术杂志风：暖纸色页面、衬线展示字体、墨色与酒红点缀、细线分隔、左侧固定索引导航与卡片化内容区，不做传统后台管理系统。
+---
 
-## 技术架构
+## 1. 项目简介
 
-### 技术栈
+智研知库不是传统课程管理后台，而是一套围绕“课程知识库 + RAG 检索 + 流式 Agent”构建的计算机学科学习工作台。
 
-- Vue 3 + TypeScript + Vite
-- Pinia / Vue Router
-- Element Plus
-- Tailwind CSS
-- markdown-it + highlight.js
-- ECharts
+当前版本完成了从纯前端 Mock 到真实前后端联通的升级：
 
-### 分层设计
+- 真实 JWT 登录、注册与用户会话
+- 文档上传、解析、语义切分、向量化落库
+- 混合检索（向量 + 关键词）、阈值过滤、重排序
+- 服务端持久化的 Agent 思考步骤、工具调用、引用来源
+- DeepSeek 流式回答，可配置离线模板兜底
+- ECharts 知识依赖图谱
+- 检索日志与阶段耗时可观测
 
-- **视图层**：Vue 3 组合式 API + Element Plus，页面组件按路由拆分。
-- **状态层**：Pinia 管理登录态、会话与 RAG 参数，并通过 localStorage 持久化。
-- **服务层**：`src/services/` 封装 Agent 流式对话、Mock API 与 SSE 解析，视图不直接依赖 Mock 实现。
-- **数据层**：`src/mock/index.ts` 提供课程、知识点、知识片段、图谱与 NCF 模拟数据。
-- **工具层**：`src/utils/` 提供检索排序、检索模式、异步控制、格式化与存储等纯函数。
+## 2. 技术栈
 
-## 环境配置与运行
-
-### 环境要求
-
-| 工具 | 版本 |
+| 层 | 技术 |
 | --- | --- |
-| Node.js | >= 18（推荐 20 LTS） |
-| npm | >= 9 |
+| 前端 | Vue 3 · TypeScript · Vite · Pinia · Element Plus · TailwindCSS · markdown-it · highlight.js · ECharts |
+| 后端 | Python 3.13 · Django 6 · Django REST Framework · SimpleJWT · PyMySQL / SQLite |
+| AI | DeepSeek OpenAI-compatible Chat API（可关闭） |
+| 检索 | 本地中文 n-gram 哈希向量 + BM25 + Hybrid Rerank |
+| 数据库 | MySQL 8.0 主库 `zhiyan_zhiku`，支持 SQLite 开发兜底 |
 
-### 安装与启动
+## 3. 功能页面
+
+| 路由 | 页面 | 功能 |
+| --- | --- | --- |
+| `/login` | 登录 | 真实账号密码校验、加载态、错误提示、实时知识库统计 |
+| `/workspace` | Agent 工作台 | 三栏布局、会话新建/删除/恢复、流式问答、Markdown、引用卡片、思考面板 |
+| `/knowledge` | 知识库管理 | 课程/知识点/文档库标签页、搜索、文档上传/重索引/删除、RAG 参数 |
+| `/rag-debug` | RAG 检索调试 | query → 召回片段、原文、来源、知识点 ID、相似度、阶段耗时 |
+| `/graph` | 知识图谱 | ECharts 力导向图、领域筛选、节点详情、客观先修依赖 |
+
+## 4. 快速启动
+
+### 4.1 环境要求
+
+- Node.js >= 18
+- Python >= 3.12
+- MySQL 8（或在 `server/.env` 中切换 SQLite）
+
+### 4.2 后端
 
 ```bash
-# 1. 安装依赖（国内网络可使用 npmmirror 镜像）
-npm install --registry=https://registry.npmmirror.com
+cd server
+python -m venv .venv
 
-# 2. 可选：复制环境变量模板
-cp .env.example .env.local
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
 
-# 3. 启动开发服务器
+pip install -r requirements.txt
+copy .env.example .env   # Windows；macOS/Linux 使用 cp
+```
+
+编辑 `server/.env`：
+
+```env
+DB_ENGINE=mysql
+DB_NAME=zhiyan_zhiku
+DB_USER=root
+DB_PASSWORD=your-password
+DB_HOST=127.0.0.1
+DB_PORT=3306
+
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+LLM_PROVIDER=deepseek
+```
+
+初始化数据库（二选一）：
+
+**方式 A：使用 Django 迁移和种子数据（推荐开发时使用）**
+
+```bash
+python manage.py migrate
+python manage.py seed_all --reset
+```
+
+**方式 B：导入交付 SQL**
+
+```bash
+mysql -uroot -p < ../sql/00_create_database.sql
+mysql -uroot -p < ../sql/01_schema_mysql.sql
+mysql -uroot -p < ../sql/02_seed_mysql.sql
+mysql -uroot -p < ../sql/03_verify.sql
+```
+
+启动后端：
+
+```bash
+python manage.py runserver 127.0.0.1:8000
+```
+
+### 4.3 前端
+
+在项目根目录新开终端：
+
+```bash
+npm install
 npm run dev
 ```
 
-浏览器访问：<http://localhost:5173>
+浏览器打开：<http://127.0.0.1:5173>
 
-登录说明：Mock 鉴权，输入任意账号（至少 2 个字符）和密码（至少 6 位）即可进入，例如 `student / 123456`。
+Vite 已配置 `/api` 与 `/media` 代理到 `http://127.0.0.1:8000`。
 
-### 环境变量
-
-| 变量名 | 必填 | 说明 |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | 否 | 真实后端地址；不配置时使用前端 Mock 服务（当前默认） |
-
-项目为纯前端 Mock 演示，无需任何 API 密钥即可运行。若后续接入真实大模型或检索服务，请仅通过环境变量注入密钥：本地使用 `.env.local`，部署时使用托管平台的环境变量配置。**严禁将密钥写入源码或提交到仓库**；`.env`、`.env.*` 已被 `.gitignore` 忽略，仅保留 `.env.example` 模板。
-
-### 依赖清单
-
-完整依赖见 [package.json](package.json)，主要依赖如下：
-
-| 依赖 | 用途 |
-| --- | --- |
-| `vue` / `vue-router` / `pinia` | 页面渲染、路由与全局状态 |
-| `element-plus` | UI 组件库 |
-| `echarts` | 知识图谱力导向图 |
-| `markdown-it` / `highlight.js` | 回答 Markdown 渲染与代码高亮 |
-| `tailwindcss` | 原子化样式 |
-| `vite` / `typescript` / `vue-tsc` | 构建与类型检查 |
-
-### 其他命令
-
-```bash
-# 类型检查
-npm run type-check
-
-# 生产构建
-npm run build
-
-# 预览构建产物
-npm run preview
-```
-
-## 页面
-
-| 路由 | 页面 | 核心内容 |
-| --- | --- | --- |
-| `/login` | 登录 | 左右分栏品牌页，账号 / 密码校验、加载态、错误提示 |
-| `/workspace` | Agent 对话工作台 | 三栏布局、会话管理、逐字符 SSE、Markdown、引用卡片、思考面板 |
-| `/knowledge` | 知识库管理 | 统计卡片、课程 / 知识点标签页与搜索、Top-K / 阈值 / 检索模式 |
-| `/rag-debug` | RAG 检索调试 | 召回片段、原文、相似度进度、来源课程、知识点 ID、阶段耗时 |
-| `/graph` | 知识图谱 | ECharts 力导向依赖图、节点详情卡、领域筛选 |
-
-侧边栏的 `NCF推荐Demo` 是独立弹窗演示，不进入主业务。
-
-## 已实现能力
-
-### 全局界面
-
-- 统一左侧导航、顶部面包屑、卡片、标签页、按钮、输入框样式。
-- 桌面端顶部栏展示知识空间、Mock SSE 状态；移动端提供抽屉导航。
-- 学术杂志风浅色工作台：暖纸底色、衬线标题、酒红强调色与细线排版，聚焦 RAG 学习与检索调试，不引入旧选课业务模块。
-
-### Agent 对话
-
-- 左侧新建 / 选择 / 删除会话，当前会话高亮，数据保存在 localStorage。
-- 用户消息右对齐，AI 消息左对齐。
-- AI 回答使用 `markdown-it` 渲染标题、列表、表格、行内代码与代码块（highlight.js），并逐字符流式追加。
-- 每条回答底部展示引用来源卡片：课程名称、知识点 ID、相似度分数、章节与原文片段。
-- 可折叠「Agent 思考过程」：思考内容、工具名称、入参、返回结果、召回知识片段。
-- 底部多行输入框、`Enter / Shift + Enter`、停止生成、快捷按钮：
-  - 生成AI工程师学习路线
-  - 查询机器学习前置知识点
-
-### 知识库管理
-
-- 顶部展示课程数量、知识点数量、向量片段数量、最后更新时间。
-- 课程列表 / 知识点列表标签页，两个列表均支持本地搜索。
-- RAG 参数表单：Top-K、相似度阈值、混合 / 向量 / 关键词检索模式。
-- 参数通过 Pinia 持久化，并同步给 Agent 与检索调试页。
-
-### RAG 检索调试
-
-- 左侧测试问题、示例问题、检索参数；右侧召回结果。
-- 每条召回结果包含：原文内容、相似度分数与进度条、来源课程、知识点 ID。
-- 展示向量化、召回、重排序与总耗时，帮助评审理解 RAG 内部机制。
-- 支持无结果时一键降低阈值重新检索。
-
-### 知识图谱
-
-- ECharts `graph + force` 渲染 23 个知识点与 33 条客观先修关系。
-- 支持拖拽、缩放、领域筛选。
-- 点击节点后，右侧知识点详情卡显示名称、课程、前置知识、后继方向与说明。
-- 只呈现课程知识结构，不包含任何个性化学习数据。
-
-## 目录结构
+### 4.4 演示账号
 
 ```text
-src/
-├── components/
-│   ├── chat/                   # 会话、消息、引用、思考面板、输入框
-│   ├── feedback/               # 通用空状态 / 错误状态
-│   ├── rag/                    # 检索结果卡片
-│   ├── AppBreadcrumb.vue
-│   ├── AppSidebar.vue
-│   ├── BrandMark.vue
-│   ├── NcfDemoDialog.vue
-│   └── PageHeader.vue
-├── mock/
-│   └── index.ts                # 课程、知识点、知识片段、图谱、NCF 全部模拟数据
-├── layouts/
-│   └── AppLayout.vue
-├── router/
-│   └── index.ts
-├── services/
-│   ├── agentService.ts         # Agent 流式事件入口
-│   ├── mockAgentServer.ts      # Mock SSE 服务
-│   ├── mockApi.ts              # 登录、知识库、检索、NCF Mock API
-│   └── sse.ts                  # SSE 帧解析器
-├── stores/
-│   ├── auth.ts
-│   ├── chat.ts
-│   └── rag.ts
-├── styles/
-│   └── index.css
-├── types/
-│   └── index.ts
-├── utils/
-│   ├── async.ts
-│   ├── format.ts
-│   ├── id.ts
-│   ├── rag.ts
-│   ├── retrieval.ts
-│   └── storage.ts
-└── views/
-    ├── LoginView.vue
-    ├── WorkbenchView.vue
-    ├── KnowledgeBaseView.vue
-    ├── RagDebugView.vue
-    └── KnowledgeGraphView.vue
+student / student123
+admin   / zhiyan123
 ```
 
-## Mock SSE
+### 4.5 无 MySQL 时的 SQLite 兜底
 
-`src/services/mockAgentServer.ts` 通过 `ReadableStream` 生成 `text/event-stream` 事件，`src/services/sse.ts` 完成客户端解析，`src/services/agentService.ts` 向上层派发：
+将 `server/.env` 改为：
 
-- `step`：思考步骤状态
-- `tool`：工具调用与入参 / 返回
-- `retrieval`：召回知识片段
-- `citations`：引用来源
-- `delta`：单字符文本增量
-- `done`：完成与耗时
+```env
+DB_ENGINE=sqlite
+SQLITE_PATH=db.sqlite3
+```
 
-对接真实后端时，将 Mock 流的创建替换为真实 `fetch` 返回的 `response.body`，事件协议保持不变即可。
+执行：
 
-## 团队信息
+```bash
+python manage.py migrate
+python manage.py seed_all --reset
+python manage.py runserver 127.0.0.1:8000
+```
+
+### 4.6 不配置 DeepSeek 时
+
+保持 `DEEPSEEK_API_KEY` 为空，或设置 `LLM_PROVIDER=local`。后端会使用基于真实检索证据的本地模板生成流式回答，引用、思考步骤、工具调用和检索日志仍正常工作，方便离线评审。
+
+## 5. 系统结构
+
+```text
+.
+├─ src/                              # Vue 前端
+│  ├─ components/
+│  │  ├─ chat/                       # 会话、消息、引用、思考面板、输入框
+│  │  ├─ knowledge/                  # 文档上传与知识库文档管理
+│  │  ├─ rag/                        # RAG 召回结果卡片
+│  │  └─ feedback/                   # 空/错误状态
+│  ├─ constants/                     # 快捷问题、默认 RAG 参数
+│  ├─ services/
+│  │  ├─ http.ts                     # JWT、刷新、错误归一化、SSE fetch
+│  │  ├─ api.ts                      # REST API 类型化封装
+│  │  ├─ agentService.ts             # Agent SSE 客户端
+│  │  └─ sse.ts                      # SSE 帧解析器
+│  ├─ stores/                        # auth / chat / rag / system
+│  ├─ types/                         # 前后端共享数据形状
+│  └─ views/                         # 5 个业务页面
+├─ server/                           # Django 后端
+│  ├─ apps/accounts/                 # 自定义用户与 JWT
+│  ├─ apps/knowledge/                # 课程、知识点、图谱、文档、分块
+│  ├─ apps/retrieval/                # embedding、BM25、混合检索、RAG 配置、日志
+│  ├─ apps/agent/                    # 会话、消息、Agent SSE、引用、运行轨迹
+│  ├─ apps/core/                     # health、public stats、seed 命令
+│  ├─ seed/content/                  # 8 门课程的真实讲义 Markdown
+│  ├─ seed/manifest.py               # 课程、知识点与图谱种子数据
+│  └─ tests/                         # API / SSE / 检索 / 上传测试
+└─ sql/                              # MySQL 建库、建表、种子、校验 SQL
+```
+
+种子规模：8 门核心课程、50 个知识点、8 份课程讲义、50 个向量片段、23 个图谱节点、33 条客观先修边。
+
+## 6. 数据库设计
+
+### 6.1 RAG 数据表
+
+| 表 | 作用 |
+| --- | --- |
+| `documents` | 课程文档元数据、解析状态、chunk 数、上传人 |
+| `document_chunks` | 原文、章节、标签、tokens、embedding JSON、向量模型信息 |
+| `conversations` / `messages` | 服务端会话与消息 |
+| `citations` | 消息级引用快照（课程、知识点、来源、分数） |
+| `agent_runs` / `agent_steps` / `agent_tool_calls` | Agent 运行、思考步骤、工具调用与耗时 |
+| `retrieval_logs` / `retrieval_log_items` | 每次检索的参数、候选数、召回分数、阶段耗时 |
+| `rag_settings` | 每用户 Top-K / 阈值 / 检索模式 |
+
+## 7. API 摘要
+
+基础路径：`/api/v1`。除登录、刷新、health 和 public stats 外均需 `Authorization: Bearer <token>`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/auth/login/` | 登录，返回 access token、refresh、用户信息 |
+| POST | `/auth/register/` | 注册账号并自动登录 |
+| POST | `/auth/refresh/` | 刷新 access token |
+| GET | `/auth/me/` | 当前用户 |
+| POST | `/auth/logout/` | 登出 |
+| GET | `/public/stats/` | 公开知识库统计 |
+| GET | `/health/` | API、数据库、LLM、Embedding 健康信息 |
+| GET | `/knowledge-base/overview/` | 课程、知识点、文档、向量片段统计 |
+| GET | `/courses/` | 课程列表 |
+| GET | `/knowledge-points/` | 知识点列表与搜索 |
+| GET | `/graph/` | 知识图谱节点、边和分类 |
+| GET / POST | `/documents/` | 文档列表 / 上传入库 |
+| DELETE | `/documents/{uid}/` | 删除文档和其向量片段 |
+| POST | `/documents/{uid}/reindex/` | 重新解析和向量化 |
+| POST | `/retrieval/query/` | RAG 检索调试 |
+| GET / PUT | `/rag/config/` | 用户 RAG 参数 |
+| GET / POST | `/conversations/` | 会话列表 / 新建会话 |
+| GET / DELETE | `/conversations/{id}/` | 会话详情 / 删除 |
+| DELETE | `/conversations/{id}/messages/` | 清空会话 |
+| DELETE | `/messages/{id}/` | 删除单条消息 |
+| POST | `/conversations/{id}/stream/` | Agent SSE 流式问答 |
+
+### SSE 事件
+
+`POST /conversations/{id}/stream/` 返回 `text/event-stream`：
+
+| event | data |
+| --- | --- |
+| `step` | 思考步骤状态 |
+| `tool` | 工具名、入参、返回、耗时 |
+| `retrieval` | 召回知识片段 |
+| `citations` | 引用来源 |
+| `delta` | 文本增量 |
+| `done` | 引用数量、耗时、消息/运行/会话 ID |
+| `error` | 错误信息与可重试标记 |
+
+## 8. RAG-Agent 核心机制
+
+1. **文档入库**：服务端解析 TXT / Markdown / PDF / DOCX，按标题和段落切分，生成 tokens 与 384 维本地哈希向量。
+2. **混合召回**：查询向量余弦相似度 + BM25 词法分数，按 vector / keyword / hybrid 模式加权。
+3. **阈值与重排**：低于用户阈值的片段被过滤；候选按标题、标签、知识点覆盖率和语义相关度重排。
+4. **可追溯生成**：仅将召回片段作为证据加入 Prompt；DeepSeek 流式生成，无 Key 时使用真实证据模板兜底。
+5. **可观测**：思考步骤、工具调用、召回片段、引用、阶段耗时与检索日志全部入库，刷新页面后可恢复。
+6. **客观图谱**：知识图谱只展示课程先修关系，不包含学习进度、画像或推荐数据。
+
+## 9. 评审演示路径
+
+1. 使用 `student / student123` 登录，首页统计直接来自 MySQL。
+2. 在工作台点击「生成AI工程师学习路线」，展开思考面板查看意图识别、混合检索、重排序、工具调用与召回片段。
+3. 回答完成后查看带课程、知识点 ID 与相似度的引用卡片；刷新页面验证服务端会话与轨迹恢复。
+4. 在知识库管理上传一份 TXT/Markdown 课程文档，观察 chunk 数和统计实时变化。
+5. 在 RAG 检索调试切换 Top-K、阈值和三种检索模式，查看真实召回分数与阶段耗时。
+6. 打开知识图谱，点击节点查看客观前置知识、后继方向与关联课程。
+7. 清空 `DEEPSEEK_API_KEY` 或设置 `LLM_PROVIDER=local` 后重新提问，验证离线证据模板仍可流式输出。
+
+## 10. 测试
+
+后端：
+
+```bash
+cd server
+python manage.py test tests -v 2
+```
+
+测试覆盖登录、概览、图谱、三种检索模式、RAG 配置、会话 CRUD、SSE 事件顺序、离线兜底、文档上传/召回/级联删除。
+
+前端：
+
+```bash
+npm run type-check
+npm run build
+```
+
+已验证：
+
+- SQLite 与 MySQL 8 均可迁移、种子、测试和启动
+- MySQL SQL 文件可在独立数据库完整恢复
+- 浏览器端登录、流式回答、引用、刷新后会话恢复
+- 文档上传、列表更新、删除
+- RAG 调试与图谱渲染正常
+
+## 11. 已知边界
+
+- MySQL 8 没有原生向量类型，当前使用 JSON 持久化 embedding + Python 精确余弦检索，适合省赛 Demo 与千级片段；更大规模可替换为 pgvector / Milvus / Qdrant，API 不需要变化。
+- PDF/DOCX 依赖 `pypdf` / `python-docx`；TXT / Markdown 无需额外组件。
+- 上传是同步解析，适合现场演示；生产环境可将 `ingest_document` 放入 Celery/RQ 任务。
+- DeepSeek Key 仅存放在 `server/.env`，已被 `.gitignore` 排除；请勿提交或写入数据库/SQL/README。
+
+## 12. 团队信息
 
 | 成员 | 角色 | 主要分工 |
 | --- | --- | --- |
-| Hua-Jian-Xiao | 项目负责人 / 前端开发 | 整体架构、Agent 对话工作台、RAG 检索调试、知识图谱、文档与部署 |
+| Hua-Jian-Xiao | 项目负责人 / 全栈开发 | 架构设计、Vue 前端工作台、Django 后端、RAG 检索与 Agent 链路、文档与部署 |
 
 - 联系方式：1419955217@qq.com
-
-## 状态覆盖
-
-- 骨架屏：工作台初始化、知识库、RAG 检索、知识图谱、NCF 推理。
-- 空状态：无会话、无搜索结果、无召回片段、NCF 未运行。
-- 加载状态：登录、刷新索引、检索、流式生成、推荐推理。
-- 错误状态：登录校验、流式中断、请求失败与重试。
