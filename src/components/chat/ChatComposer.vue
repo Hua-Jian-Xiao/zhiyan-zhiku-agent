@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import { MagicStick, Promotion, VideoPause } from '@element-plus/icons-vue'
-import { quickPrompts } from '@/data/mockData'
+import { quickPrompts } from '@/mock'
+import type { RetrievalMode } from '@/types'
+import { getRetrievalModeLabel } from '@/utils/rag'
 
 const props = withDefaults(
   defineProps<{
@@ -9,12 +11,14 @@ const props = withDefaults(
     disabled?: boolean
     topK?: number
     threshold?: number
+    retrievalMode?: RetrievalMode
   }>(),
   {
     streaming: false,
     disabled: false,
     topK: 5,
     threshold: 0.72,
+    retrievalMode: 'hybrid',
   },
 )
 
@@ -31,6 +35,8 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const canSend = computed(
   () => draft.value.trim().length > 0 && !props.streaming && !props.disabled,
 )
+
+const modeLabel = computed(() => getRetrievalModeLabel(props.retrievalMode))
 
 function resizeTextarea(): void {
   const textarea = textareaRef.value
@@ -66,9 +72,9 @@ function stop(): void {
 <template>
   <div class="composer-wrap">
     <div class="mb-2.5 flex flex-wrap items-center gap-1.5 px-0.5">
-      <span class="mr-0.5 flex items-center gap-1 text-[8px] font-medium uppercase tracking-[0.12em] text-slate-400">
-        <el-icon :size="10" class="text-indigo-400"><MagicStick /></el-icon>
-        快捷提问
+      <span class="mr-1 flex items-center gap-1 font-mono text-[7px] font-medium uppercase tracking-[0.16em] text-[#a29582]">
+        <el-icon :size="9" class="text-[#9a463c]"><MagicStick /></el-icon>
+        Quick notes / 快捷提问
       </span>
       <button
         v-for="prompt in quickPrompts"
@@ -82,10 +88,7 @@ function stop(): void {
       </button>
     </div>
 
-    <div
-      class="composer-shell"
-      :class="{ 'is-focused': focused }"
-    >
+    <div class="composer-shell" :class="{ 'is-focused': focused }">
       <textarea
         ref="textareaRef"
         v-model="draft"
@@ -101,23 +104,18 @@ function stop(): void {
 
       <div class="mt-1 flex items-center justify-between gap-2 px-1.5 pb-0.5">
         <div class="flex min-w-0 items-center gap-2">
-          <span class="inline-flex items-center gap-1.5 rounded-md border border-slate-200/70 bg-white px-1.5 py-0.5 text-[8px] font-medium text-slate-500">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            RAG-Agent v2
+          <span class="inline-flex items-center gap-1.5 border border-[#d8cebd] px-1.5 py-0.5 font-mono text-[7px] tracking-[0.04em] text-[#6f6456]">
+            <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
+            RAG-AGENT / v2
           </span>
-          <span class="hidden font-mono text-[8px] text-slate-400 sm:inline">
-            Top-K {{ topK }} · 阈值 {{ threshold.toFixed(2) }}
+          <span class="hidden font-mono text-[7px] text-[#a29582] sm:inline">
+            {{ modeLabel }} · TOP-K {{ topK }} · 阈值 {{ threshold.toFixed(2) }}
           </span>
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
-          <span class="hidden text-[8px] text-slate-400 md:inline">Enter 发送 · Shift + Enter 换行</span>
-          <button
-            v-if="streaming"
-            type="button"
-            class="composer-stop"
-            @click="stop"
-          >
+          <span class="hidden font-mono text-[7px] text-[#a29582] md:inline">ENTER 发送 / SHIFT+ENTER 换行</span>
+          <button v-if="streaming" type="button" class="composer-stop" @click="stop">
             <el-icon :size="11"><VideoPause /></el-icon>
             停止
           </button>
@@ -135,10 +133,10 @@ function stop(): void {
       </div>
     </div>
 
-    <p class="mt-2 text-center text-[8px] leading-4 text-slate-400">
+    <p class="mt-2 text-center font-mono text-[7px] leading-4 tracking-[0.04em] text-[#a29582]">
       回答由 RAG Agent 基于课程知识库生成，引用内容请以来源卡片为准
-      <span class="mx-1 text-slate-300">·</span>
-      <span class="font-mono">Mock SSE Stream</span>
+      <span class="mx-1 text-[#d8cebd]">/</span>
+      Mock SSE Stream
     </p>
   </div>
 </template>
@@ -149,22 +147,22 @@ function stop(): void {
 }
 
 .quick-chip {
-  padding: 4px 9px;
-  color: #5b6477;
-  font-size: 9px;
+  padding: 3px 1px;
+  color: #6f6456;
+  font-family: var(--app-font);
+  font-size: 8.5px;
   font-weight: 500;
-  background: #f8fafc;
-  border: 1px solid #e8edf4;
-  border-radius: 7px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #c9bdab;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .quick-chip:hover:not(:disabled) {
-  color: #4f46e5;
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  transform: translateY(-1px);
+  color: #7d302f;
+  border-bottom-color: #7d302f;
 }
 
 .quick-chip:disabled {
@@ -173,23 +171,19 @@ function stop(): void {
 }
 
 .composer-shell {
-  padding: 11px 11px 8px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #e3e8f1;
-  border-radius: 16px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.03),
-    0 14px 36px -24px rgba(30, 41, 59, 0.28);
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
+  padding: 9px 10px 7px;
+  background: #fffdf8;
+  border: 1px solid #b9ab97;
+  border-top: 2px solid #211c17;
+  border-radius: 0;
+  box-shadow: none;
+  transition: border-color 0.18s ease;
 }
 
 .composer-shell.is-focused {
-  border-color: #c7d2fe;
-  box-shadow:
-    0 0 0 3px rgba(99, 102, 241, 0.06),
-    0 16px 38px -24px rgba(79, 70, 229, 0.32);
+  border-color: #9a463c;
+  border-top-color: #7d302f;
+  box-shadow: none;
 }
 
 .composer-textarea {
@@ -197,12 +191,12 @@ function stop(): void {
   width: 100%;
   min-height: 34px;
   max-height: 132px;
-  padding: 5px 8px;
+  padding: 5px 7px;
   overflow-y: auto;
-  color: #1e293b;
+  color: #2f2922;
   font-family: var(--app-font);
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.75;
   background: transparent;
   border: 0;
   outline: 0;
@@ -210,7 +204,8 @@ function stop(): void {
 }
 
 .composer-textarea::placeholder {
-  color: #9aa5b8;
+  color: #a99d8b;
+  font-style: italic;
 }
 
 .composer-textarea:disabled {
@@ -220,47 +215,49 @@ function stop(): void {
 
 .composer-send {
   display: grid;
-  width: 31px;
-  height: 31px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  border: 0;
-  border-radius: 9px;
-  box-shadow: 0 8px 18px -8px rgba(79, 70, 229, 0.62);
+  color: #fffdf8;
+  background: #682728;
+  border: 1px solid #682728;
+  border-radius: 0;
+  box-shadow: none;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .composer-send:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5, #4338ca);
-  transform: translateY(-1px);
+  background: #552222;
+  border-color: #552222;
 }
 
 .composer-send:disabled {
-  color: #cbd5e1;
-  background: #f1f5f9;
+  color: #b5a995;
+  background: #efe7da;
+  border-color: #d8cebd;
   box-shadow: none;
   cursor: not-allowed;
 }
 
 .composer-stop {
   display: inline-flex;
-  height: 31px;
+  height: 30px;
   align-items: center;
   gap: 4px;
-  padding: 0 11px;
-  color: #dc2626;
-  font-size: 10px;
-  font-weight: 500;
-  background: #fff5f5;
-  border: 1px solid #fecaca;
-  border-radius: 9px;
+  padding: 0 10px;
+  color: #8e3d35;
+  font-family: var(--app-mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  background: #f6e9e4;
+  border: 1px solid #d8b8b1;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .composer-stop:hover {
-  background: #fee2e2;
+  background: #efdcd5;
 }
 </style>

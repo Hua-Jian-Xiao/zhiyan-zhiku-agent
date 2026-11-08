@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowRight,
@@ -17,15 +17,12 @@ import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ConversationList from '@/components/chat/ConversationList.vue'
 import AgentSidePanel from '@/components/chat/AgentSidePanel.vue'
 import StatePanel from '@/components/feedback/StatePanel.vue'
-import { starterPrompts } from '@/data/mockData'
+import { starterPrompts } from '@/mock'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useRagStore } from '@/stores/rag'
 import { createInitialTrace } from '@/services/mockAgentServer'
-import {
-  streamAgentReply,
-  type AgentStreamEvent,
-} from '@/services/agentService'
+import { streamAgentReply, type AgentStreamEvent } from '@/services/agentService'
 import type { ChatMessage as ChatMessageType, Conversation } from '@/types'
 import { isAbortError } from '@/utils/async'
 import { createId } from '@/utils/id'
@@ -38,6 +35,8 @@ const scrollContainer = ref<HTMLElement | null>(null)
 const mobileListOpen = ref(false)
 const autoScroll = ref(true)
 const activeController = ref<AbortController | null>(null)
+const isBooting = ref(true)
+const bootError = ref('')
 
 const activeConversation = computed(() => chatStore.activeConversation)
 const messages = computed(() => chatStore.activeMessages)
@@ -55,7 +54,7 @@ const starterIcons: Record<string, Component> = {
 
 const headerSubtitle = computed(() => {
   if (chatStore.isStreaming) return 'Agent 正在检索并生成，可展开思考面板查看实时过程'
-  if (!activeConversation.value) return '新建或选择一个会话开始学习'
+  if (!activeConversation.value) return '新建或选择一个会话开始探索'
   return `${userMessageCount.value} 轮对话 · 本地会话已自动保存`
 })
 
@@ -110,6 +109,10 @@ function guardStreaming(): boolean {
     return false
   }
   return true
+}
+
+function reloadWorkspace(): void {
+  window.location.reload()
 }
 
 function handleCreateConversation(): void {
@@ -250,6 +253,7 @@ async function runAgent(conversationId: string, query: string): Promise<void> {
         query,
         topK: ragStore.config.topK,
         threshold: ragStore.config.threshold,
+        retrievalMode: ragStore.config.retrievalMode,
       },
       (event) => applyStreamEvent(conversationId, assistantMessage.id, event),
       controller.signal,
@@ -324,6 +328,19 @@ async function handleRetry(message: ChatMessageType): Promise<void> {
   await runAgent(conversation.id, previousUser.content)
 }
 
+onMounted(async () => {
+  try {
+    await new Promise((resolve) => window.setTimeout(resolve, 280))
+    if (!chatStore.conversations.length && !chatStore.activeConversation) {
+      chatStore.createConversation()
+    }
+  } catch {
+    bootError.value = '工作台初始化失败，请刷新页面后重试'
+  } finally {
+    isBooting.value = false
+  }
+})
+
 onBeforeUnmount(() => {
   activeController.value?.abort()
   activeController.value = null
@@ -334,203 +351,241 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex h-full flex-col p-2.5 sm:p-3 lg:p-4">
     <div
-      class="flex min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/80 bg-white shadow-[0_20px_70px_-34px_rgba(15,23,42,0.28)]"
+      class="flex min-h-0 flex-1 overflow-hidden border border-[#b9ab97] bg-[#fffdf8]"
     >
-      <div class="hidden w-[254px] shrink-0 border-r border-slate-100 lg:block">
-        <ConversationList
-          :conversations="chatStore.sortedConversations"
-          :active-id="chatStore.activeId"
-          :streaming="chatStore.isStreaming"
-          @select="handleSelectConversation"
-          @create="handleCreateConversation"
-          @remove="handleDeleteConversation"
+      <template v-if="isBooting">
+        <div class="hidden w-[254px] shrink-0 space-y-3 border-r border-[#ddd2c1] bg-[#f8f3e9] p-4 lg:block">
+          <div class="flex items-center justify-between">
+            <div class="skeleton h-4 w-16" />
+            <div class="skeleton h-8 w-8" />
+          </div>
+          <div class="skeleton h-8 w-full" />
+          <div v-for="index in 4" :key="index" class="skeleton h-[58px] w-full rounded-xl" />
+        </div>
+        <div class="flex min-w-0 flex-1 flex-col">
+          <div class="flex h-[66px] items-center justify-between border-b border-slate-100 px-5">
+            <div>
+              <div class="skeleton h-3 w-40" />
+              <div class="skeleton mt-2 h-2 w-56" />
+            </div>
+            <div class="skeleton h-8 w-20 rounded-lg" />
+          </div>
+          <div class="flex-1 space-y-5 px-8 py-8">
+            <div class="mx-auto max-w-[600px] space-y-4">
+              <div class="skeleton mx-auto h-14 w-14 rounded-2xl" />
+              <div class="skeleton mx-auto h-5 w-64" />
+              <div class="skeleton mx-auto h-3 w-96" />
+              <div class="mt-6 grid grid-cols-2 gap-3">
+                <div v-for="index in 4" :key="index" class="skeleton h-[74px] rounded-xl" />
+              </div>
+            </div>
+          </div>
+          <div class="border-t border-slate-100 p-4">
+            <div class="skeleton h-[92px] w-full rounded-2xl" />
+          </div>
+        </div>
+        <div class="hidden w-[286px] shrink-0 space-y-3 border-l border-[#ddd2c1] bg-[#f8f3e9] p-4 min-[1400px]:block">
+          <div class="skeleton h-[176px] rounded-2xl" />
+          <div class="skeleton h-[140px] rounded-2xl" />
+          <div class="skeleton h-[130px] rounded-2xl" />
+        </div>
+      </template>
+
+      <div v-else-if="bootError" class="flex min-h-0 flex-1 items-center justify-center">
+        <StatePanel
+          type="error"
+          title="工作台初始化失败"
+          :description="bootError"
+          action-text="刷新页面"
+          @action="reloadWorkspace"
         />
       </div>
 
-      <section class="flex min-w-0 flex-1 flex-col bg-white">
-        <header class="flex h-[66px] shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-3 sm:px-5">
-          <div class="flex min-w-0 items-center gap-2.5">
-            <button
-              type="button"
-              class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 lg:hidden"
-              aria-label="打开会话列表"
-              @click="mobileListOpen = true"
-            >
-              <el-icon :size="14"><Operation /></el-icon>
-            </button>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <h2 class="truncate text-[13px] font-semibold tracking-tight text-slate-800">
-                  {{ activeConversation?.title || 'Agent 对话工作台' }}
-                </h2>
-                <span
-                  v-if="chatStore.isStreaming"
-                  class="hidden shrink-0 items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-1.5 py-px text-[7.5px] font-medium text-indigo-500 sm:inline-flex"
-                >
-                  <span class="h-1 w-1 animate-pulse rounded-full bg-indigo-500" />
-                  LIVE
-                </span>
+      <template v-else>
+        <div class="hidden w-[254px] shrink-0 border-r border-[#d8cebd] lg:block">
+          <ConversationList
+            :conversations="chatStore.sortedConversations"
+            :active-id="chatStore.activeId"
+            :streaming="chatStore.isStreaming"
+            @select="handleSelectConversation"
+            @create="handleCreateConversation"
+            @remove="handleDeleteConversation"
+          />
+        </div>
+
+        <section class="flex min-w-0 flex-1 flex-col bg-[#fffdf8]">
+          <header class="flex h-[66px] shrink-0 items-center justify-between gap-3 border-b border-[#d8cebd] px-3 sm:px-5">
+            <div class="flex min-w-0 items-center gap-2.5">
+              <button
+                type="button"
+                class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 lg:hidden"
+                aria-label="打开会话列表"
+                @click="mobileListOpen = true"
+              >
+                <el-icon :size="14"><Operation /></el-icon>
+              </button>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h2 class="truncate font-serif text-[15px] font-medium tracking-[-0.01em] text-[#211c17]">
+                    {{ activeConversation?.title || 'Agent 对话工作台' }}
+                  </h2>
+                  <span
+                    v-if="chatStore.isStreaming"
+                    class="hidden shrink-0 items-center gap-1 border border-[#d8b8b1] bg-[#f6e9e4] px-1.5 py-px font-mono text-[7px] tracking-[0.08em] text-[#8e3d35] sm:inline-flex"
+                  >
+                    <span class="h-1 w-1 animate-pulse rounded-full bg-[#9a463c]" />
+                    LIVE
+                  </span>
+                </div>
+                <p class="mt-1 truncate font-mono text-[7px] uppercase tracking-[0.08em] text-[#a29582]">{{ headerSubtitle }}</p>
               </div>
-              <p class="mt-0.5 truncate text-[8px] text-slate-400">{{ headerSubtitle }}</p>
             </div>
-          </div>
 
-          <div class="flex shrink-0 items-center gap-1.5">
-            <span
-              class="hidden items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50/70 px-2 py-1 text-[8px] text-slate-500 xl:inline-flex"
-            >
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              {{ authStore.displayName }} · 已连接知识库
-            </span>
-            <el-tooltip content="新建会话" placement="bottom" :show-after="300">
-              <button
-                type="button"
-                class="header-action"
-                aria-label="新建会话"
-                @click="handleCreateConversation"
-              >
-                <el-icon :size="13"><Plus /></el-icon>
-              </button>
-            </el-tooltip>
-            <el-tooltip content="清空当前会话" placement="bottom" :show-after="300">
-              <button
-                type="button"
-                class="header-action hover:!text-rose-500"
-                :disabled="!activeConversation || activeConversation.messages.length === 0"
-                aria-label="清空当前会话"
-                @click="handleClearConversation"
-              >
-                <el-icon :size="13"><Delete /></el-icon>
-              </button>
-            </el-tooltip>
-          </div>
-        </header>
-
-        <div
-          ref="scrollContainer"
-          class="min-h-0 flex-1 overflow-y-auto scroll-thin"
-          @scroll.passive="handleScroll"
-        >
-          <div v-if="!activeConversation" class="flex h-full items-center justify-center">
-            <StatePanel
-              title="还没有打开的会话"
-              description="从左侧选择一个历史会话，或新建一个会话继续你的学习。"
-              action-text="新建会话"
-              @action="handleCreateConversation"
-            />
-          </div>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <span class="hidden items-center gap-1.5 border border-[#d8cebd] px-2 py-1 font-mono text-[7px] uppercase tracking-[0.06em] text-[#8d806e] xl:inline-flex">
+                <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
+                {{ authStore.displayName }} · INDEX CONNECTED
+              </span>
+              <el-tooltip content="新建会话" placement="bottom" :show-after="300">
+                <button type="button" class="header-action" aria-label="新建会话" @click="handleCreateConversation">
+                  <el-icon :size="13"><Plus /></el-icon>
+                </button>
+              </el-tooltip>
+              <el-tooltip content="清空当前会话" placement="bottom" :show-after="300">
+                <button
+                  type="button"
+                  class="header-action hover:!text-rose-500"
+                  :disabled="!activeConversation || activeConversation.messages.length === 0"
+                  aria-label="清空当前会话"
+                  @click="handleClearConversation"
+                >
+                  <el-icon :size="13"><Delete /></el-icon>
+                </button>
+              </el-tooltip>
+            </div>
+          </header>
 
           <div
-            v-else-if="messages.length === 0"
-            class="relative flex min-h-full items-center justify-center overflow-hidden px-4 py-8 sm:px-8"
+            ref="scrollContainer"
+            class="min-h-0 flex-1 overflow-y-auto scroll-thin"
+            @scroll.passive="handleScroll"
           >
-            <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-              <div class="absolute left-1/2 top-[8%] h-64 w-64 -translate-x-1/2 rounded-full bg-indigo-100/45 blur-[75px]" />
-              <div class="absolute bottom-[8%] left-[18%] h-40 w-40 rounded-full bg-cyan-100/50 blur-[60px]" />
-              <div class="absolute inset-0 dot-grid opacity-[0.18]" />
-            </div>
-
-            <div class="relative w-full max-w-[670px] animate-fade-up text-center">
-              <div
-                class="relative mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-500 to-cyan-400 text-white shadow-[0_18px_40px_-18px_rgba(79,70,229,0.7)]"
-              >
-                <span class="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full border-2 border-white bg-[#0b1226]">
-                  <span class="h-1.5 w-1.5 animate-soft-pulse rounded-full bg-cyan-300" />
-                </span>
-                <el-icon :size="25"><MagicStick /></el-icon>
-              </div>
-
-              <p class="mt-5 text-[8px] font-semibold uppercase tracking-[0.22em] text-indigo-400">
-                RAG Learning Agent
-              </p>
-              <h1 class="mt-2 text-[27px] font-bold tracking-[-0.035em] text-ink-950 sm:text-[32px]">
-                今天想研究什么？
-              </h1>
-              <p class="mx-auto mt-2.5 max-w-[470px] text-[11px] leading-6 text-slate-500">
-                我会从 8 门计算机课程、326 个知识点中检索证据，
-                用可追溯的引用陪你完成一次深度探索。
-              </p>
-
-              <div class="mt-7 grid gap-2.5 text-left sm:grid-cols-2">
-                <button
-                  v-for="prompt in starterPrompts"
-                  :key="prompt.title"
-                  type="button"
-                  class="starter-card group"
-                  @click="handleQuickPrompt(prompt.prompt)"
-                >
-                  <span class="starter-icon">
-                    <el-icon :size="15"><component :is="starterIcons[prompt.icon]" /></el-icon>
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="block text-[10.5px] font-semibold text-slate-700">
-                      {{ prompt.title }}
-                    </span>
-                    <span class="mt-1 block text-[9px] leading-4 text-slate-400">
-                      {{ prompt.description }}
-                    </span>
-                  </span>
-                  <el-icon
-                    :size="11"
-                    class="mt-0.5 shrink-0 text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-indigo-400"
-                  >
-                    <ArrowRight />
-                  </el-icon>
-                </button>
-              </div>
-
-              <div class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[8px] text-slate-400">
-                <span class="flex items-center gap-1.5">
-                  <span class="h-1 w-1 rounded-full bg-emerald-400" />
-                  知识库已连接
-                </span>
-                <span class="text-slate-200">|</span>
-                <span>Top-K {{ ragStore.config.topK }}</span>
-                <span class="text-slate-200">|</span>
-                <span>引用阈值 {{ ragStore.config.threshold.toFixed(2) }}</span>
-                <span class="text-slate-200">|</span>
-                <span class="font-mono">MOCK SSE</span>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="mx-auto w-full max-w-[860px] px-4 pb-8 pt-5 sm:px-6">
-            <div class="space-y-7">
-              <ChatMessage
-                v-for="message in messages"
-                :key="message.id"
-                :message="message"
-                @retry="handleRetry"
+            <div v-if="!activeConversation" class="flex h-full items-center justify-center">
+              <StatePanel
+                title="还没有打开的会话"
+                description="从左侧选择一个历史会话，或新建一个会话继续探索。"
+                action-text="新建会话"
+                @action="handleCreateConversation"
               />
             </div>
-            <div class="mt-5 flex items-center justify-center gap-2 text-[8px] text-slate-300">
-              <span class="h-px w-12 bg-slate-100" />
-              <span class="font-mono">END OF CONTEXT</span>
-              <span class="h-px w-12 bg-slate-100" />
+
+            <div
+              v-else-if="messages.length === 0"
+              class="relative flex min-h-full items-center justify-center overflow-hidden px-4 py-8 sm:px-8"
+            >
+              <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+                <div class="absolute inset-0 dot-grid opacity-[0.11]" />
+                <div class="absolute inset-y-0 left-1/2 w-px bg-[#e4dbcc]" />
+                <span class="absolute left-1/2 top-[6%] -translate-x-1/2 font-serif text-[220px] leading-none text-[#7d302f]/[0.035]">§</span>
+                <div class="absolute inset-x-8 top-8 h-px bg-[#e4dbcc]" />
+                <div class="absolute inset-x-8 bottom-8 h-px bg-[#e4dbcc]" />
+              </div>
+
+              <div class="relative w-full max-w-[670px] animate-fade-up text-center">
+                <div class="relative mx-auto grid h-14 w-14 place-items-center border border-[#7d302f]/35 bg-[#fbf5e9] text-[#682728]">
+                  <span class="absolute inset-[4px] border border-[#7d302f]/15" />
+                  <span class="font-serif text-[22px] leading-none">知</span>
+                  <span class="absolute -bottom-[5px] -right-[5px] h-2 w-2 bg-[#7d302f]" />
+                </div>
+
+                <p class="mt-5 font-mono text-[7.5px] font-medium uppercase tracking-[0.24em] text-[#9a463c]">
+                  Field Notes · RAG Learning Agent
+                </p>
+                <h1 class="mt-3 font-serif text-[31px] font-medium tracking-[-0.025em] text-[#211c17] sm:text-[38px]">
+                  今天想研究什么？
+                </h1>
+                <p class="mx-auto mt-3 max-w-[470px] text-[10.5px] leading-6 text-[#766b5b]">
+                  我会从 8 门计算机课程、326 个知识点中检索证据，
+                  用可追溯的引用陪你完成一次深度探索。
+                </p>
+
+                <div class="mt-7 grid gap-2.5 text-left sm:grid-cols-2">
+                  <button
+                    v-for="prompt in starterPrompts"
+                    :key="prompt.title"
+                    type="button"
+                    class="starter-card group"
+                    @click="handleQuickPrompt(prompt.prompt)"
+                  >
+                    <span class="starter-icon">
+                      <el-icon :size="15"><component :is="starterIcons[prompt.icon]" /></el-icon>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block text-[10.5px] font-semibold text-slate-700">
+                        {{ prompt.title }}
+                      </span>
+                      <span class="mt-1 block text-[9px] leading-4 text-slate-400">
+                        {{ prompt.description }}
+                      </span>
+                    </span>
+                    <el-icon :size="11" class="mt-0.5 shrink-0 text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-indigo-400">
+                      <ArrowRight />
+                    </el-icon>
+                  </button>
+                </div>
+
+                <div class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 font-mono text-[7px] uppercase tracking-[0.08em] text-[#a29582]">
+                  <span class="flex items-center gap-1.5">
+                    <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
+                    INDEX CONNECTED
+                  </span>
+                  <span class="text-[#d8cebd]">|</span>
+                  <span>{{ ragStore.configLabel }}</span>
+                  <span class="text-[#d8cebd]">|</span>
+                  <span>MOCK SSE</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="mx-auto w-full max-w-[800px] px-4 pb-8 pt-6 sm:px-7">
+              <div class="space-y-8">
+                <ChatMessage
+                  v-for="message in messages"
+                  :key="message.id"
+                  :message="message"
+                  @retry="handleRetry"
+                />
+              </div>
+              <div class="mt-6 flex items-center justify-center gap-3 font-mono text-[7px] tracking-[0.14em] text-[#b5a995]">
+                <span class="h-px w-12 bg-[#e1d7c8]" />
+                <span>END OF FIELD NOTES</span>
+                <span class="h-px w-12 bg-[#e1d7c8]" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div v-if="activeConversation" class="shrink-0 border-t border-slate-100 bg-gradient-to-t from-white via-white to-white/95 px-3 pb-2.5 pt-3 sm:px-5">
-          <div class="mx-auto w-full max-w-[860px]">
-            <ChatComposer
-              :streaming="chatStore.isStreaming"
-              :top-k="ragStore.config.topK"
-              :threshold="ragStore.config.threshold"
-              @send="handleSend"
-              @quick="handleQuickPrompt"
-              @stop="handleStop"
-            />
+          <div v-if="activeConversation" class="shrink-0 border-t border-[#d8cebd] bg-[#fbf7ee] px-3 pb-2.5 pt-3 sm:px-5">
+            <div class="mx-auto w-full max-w-[800px]">
+              <ChatComposer
+                :streaming="chatStore.isStreaming"
+                :top-k="ragStore.config.topK"
+                :threshold="ragStore.config.threshold"
+                :retrieval-mode="ragStore.config.retrievalMode"
+                @send="handleSend"
+                @quick="handleQuickPrompt"
+                @stop="handleStop"
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <div class="hidden w-[286px] shrink-0 border-l border-slate-100 min-[1400px]:block">
-        <AgentSidePanel
-          :is-streaming="chatStore.isStreaming"
-          :latest-message="latestAssistant"
-        />
-      </div>
+        <div class="hidden w-[286px] shrink-0 border-l border-[#d8cebd] bg-[#f8f3e9] min-[1400px]:block">
+          <AgentSidePanel
+            :is-streaming="chatStore.isStreaming"
+            :latest-message="latestAssistant"
+          />
+        </div>
+      </template>
     </div>
 
     <el-drawer
@@ -555,72 +610,74 @@ onBeforeUnmount(() => {
 <style scoped>
 .header-action {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 29px;
+  height: 29px;
   place-items: center;
-  color: #64748b;
-  background: #fff;
-  border: 1px solid #e8edf4;
-  border-radius: 8px;
+  color: #766b5b;
+  background: transparent;
+  border: 1px solid #d8cebd;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.16s ease;
 }
 
 .header-action:hover:not(:disabled) {
-  color: #4f46e5;
-  background: #f8faff;
-  border-color: #dbe3f1;
+  color: #7d302f;
+  background: #f8f2e8;
+  border-color: #b9ab97;
 }
 
 .header-action:disabled {
-  color: #cbd5e1;
+  color: #cbbfaf;
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 .starter-card {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
+  padding: 13px 13px 12px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 13px;
-  box-shadow: 0 8px 28px -26px rgba(15, 23, 42, 0.4);
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid #d8cebd;
+  border-top: 2px solid #bfb29e;
+  border-radius: 0;
+  box-shadow: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  backdrop-filter: blur(8px);
 }
 
 .starter-card:hover {
-  background: #fff;
-  border-color: #c7d2fe;
-  box-shadow: 0 16px 34px -26px rgba(79, 70, 229, 0.45);
-  transform: translateY(-2px);
+  background: #fffdf9;
+  border-color: #b9ab97;
+  border-top-color: #7d302f;
+  box-shadow: none;
+  transform: translateY(-1px);
 }
 
 .starter-icon {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   place-items: center;
-  color: #6366f1;
-  background: linear-gradient(135deg, #eef2ff, #ecfeff);
-  border: 1px solid #e0e7ff;
-  border-radius: 8px;
+  color: #7d302f;
+  background: #f8f1e5;
+  border: 1px solid #d8cebd;
+  border-radius: 0;
   transition: all 0.2s ease;
 }
 
 .starter-card:hover .starter-icon {
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1, #06b6d4);
-  border-color: transparent;
+  color: #fffdf8;
+  background: #682728;
+  border-color: #682728;
 }
 
 :deep(.conversation-drawer .el-drawer__body) {
   padding: 0;
-  background: #fbfcfe;
+  background: #f8f3e9;
 }
 </style>

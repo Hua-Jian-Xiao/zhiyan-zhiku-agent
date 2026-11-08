@@ -11,3 +11,7 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 *.tsbuildinfo
+
+# 本地版本快照，不提交
+/2/
+/2.zip

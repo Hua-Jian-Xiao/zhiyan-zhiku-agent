@@ -1,12 +1,21 @@
-import type { AgentStep, AgentTrace, Citation, RetrievedChunk, ToolCall } from '@/types'
+import type {
+  AgentStep,
+  AgentTrace,
+  Citation,
+  RetrievedChunk,
+  RetrievalMode,
+  ToolCall,
+} from '@/types'
 import { delay, isAbortError } from '@/utils/async'
 import { rankKnowledgeChunks } from '@/utils/retrieval'
 import { truncate } from '@/utils/format'
+import { getRetrievalModeLabel } from '@/utils/rag'
 
 export interface AgentStreamRequest {
   query: string
   topK: number
   threshold: number
+  retrievalMode: RetrievalMode
 }
 
 type AgentIntent = 'roadmap' | 'prerequisite' | 'rag' | 'transformer' | 'general'
@@ -59,6 +68,7 @@ export function toCitations(chunks: RetrievedChunk[]): Citation[] {
   return chunks.slice(0, 4).map((chunk, index) => ({
     id: chunk.id,
     index: index + 1,
+    knowledgePointId: chunk.knowledgePointId,
     title: chunk.title,
     course: chunk.course,
     source: chunk.source,
@@ -152,6 +162,18 @@ function buildAnswer(
       )}。随后用梯度下降打通「模型—损失—优化」的闭环${citationFor(
         'chunk-ml-gradient',
       )}，并通过交叉验证建立可靠的模型评估习惯。`,
+      '',
+      '一个最小化的线性回归训练循环，可以帮助你把公式和代码对应起来：',
+      '',
+      '```python',
+      'import numpy as np',
+      '',
+      'w = np.zeros(X.shape[1])',
+      'for _ in range(epochs):',
+      '    residual = X @ w - y',
+      '    gradient = 2 / len(y) * X.T @ residual',
+      '    w -= learning_rate * gradient',
+      '```',
       '',
       '### 阶段三：进入深度学习与 NLP',
       '',
@@ -397,26 +419,28 @@ export function createMockAgentSseStream(
         })
 
         const searchToolId = 'tool-semantic-search'
+        const modeLabel = getRetrievalModeLabel(request.retrievalMode)
         sendTool(
           createTool(
             searchToolId,
             'knowledge_base.semantic_search',
             '知识库语义检索',
-            `query: "${truncate(request.query, 36)}" · top_k: ${request.topK} · threshold: ${request.threshold.toFixed(2)}`,
+            `query: "${truncate(request.query, 36)}" · mode: ${request.retrievalMode} · top_k: ${request.topK} · threshold: ${request.threshold.toFixed(2)}`,
             'running',
-            '正在计算查询向量并执行混合检索…',
+            `正在执行${modeLabel}，计算查询向量与候选片段相似度…`,
           ),
         )
         sendStep({
           id: 'retrieve',
           title: '检索知识库',
-          detail: `正在从 8 门课程、1,284 个知识片段中召回候选`,
+          detail: `正在以「${modeLabel}」从 8 门课程、1,284 个知识片段中召回候选`,
           status: 'running',
         })
 
         const chunks = rankKnowledgeChunks(request.query, {
           topK: request.topK,
           threshold: request.threshold,
+          retrievalMode: request.retrievalMode,
         })
         const citations = toCitations(chunks)
 
@@ -426,7 +450,7 @@ export function createMockAgentSseStream(
             searchToolId,
             'knowledge_base.semantic_search',
             '知识库语义检索',
-            `query: "${truncate(request.query, 36)}" · top_k: ${request.topK} · threshold: ${request.threshold.toFixed(2)}`,
+            `query: "${truncate(request.query, 36)}" · mode: ${request.retrievalMode} · top_k: ${request.topK} · threshold: ${request.threshold.toFixed(2)}`,
             'done',
             chunks.length
               ? `召回 ${chunks.length} 条片段，最高相似度 ${(chunks[0]?.score ?? 0).toFixed(3)}`
@@ -493,12 +517,13 @@ export function createMockAgentSseStream(
 
         const answer = buildAnswer(intent, request, chunks, citations)
         const characters = Array.from(answer)
-        for (let cursor = 0; cursor < characters.length; cursor += 6) {
+        // 逐字符推送，模拟真实 SSE token 流；界面每次只追加一个字。
+        for (let cursor = 0; cursor < characters.length; cursor += 1) {
           if (streamSignal?.aborted) {
             throw new DOMException('The operation was aborted.', 'AbortError')
           }
-          send('delta', { text: characters.slice(cursor, cursor + 6).join('') })
-          await delay(15 + (hash % 11), streamSignal)
+          send('delta', { text: characters[cursor] })
+          await delay(4 + (hash % 3), streamSignal)
         }
 
         sendStep({

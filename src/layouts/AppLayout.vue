@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Menu } from '@element-plus/icons-vue'
 import AppSidebar from '@/components/AppSidebar.vue'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import NcfDemoDialog from '@/components/NcfDemoDialog.vue'
 
@@ -24,7 +25,7 @@ function openNcfDemo(): void {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden bg-[#f2f5f9]">
+  <div class="flex h-screen w-full overflow-hidden bg-[#eee8dc]">
     <div class="hidden w-[248px] shrink-0 lg:block">
       <AppSidebar @open-ncf="openNcfDemo" />
     </div>
@@ -49,12 +50,12 @@ function openNcfDemo(): void {
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header
-        class="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.05] bg-[#0a1020] px-4 lg:hidden"
+        class="flex h-14 shrink-0 items-center justify-between border-b border-[#3a3025] bg-[#17130f] px-4 lg:hidden"
       >
         <div class="flex items-center gap-3">
           <button
             type="button"
-            class="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300"
+            class="grid h-8 w-8 place-items-center border border-[#443a2c] text-[#c9bca9]"
             aria-label="打开导航"
             @click="mobileSidebarOpen = true"
           >
@@ -63,10 +64,31 @@ function openNcfDemo(): void {
           <BrandMark compact />
         </div>
         <span
-          class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[9px] text-emerald-300"
+          class="border border-[#4c5f4e] px-2 py-0.5 font-mono text-[7px] tracking-[0.1em] text-[#9dbaa2]"
         >
-          Agent 在线
+          AGENT ONLINE
         </span>
+      </header>
+
+      <header
+        class="hidden h-[54px] shrink-0 items-center justify-between border-b-[3px] border-double border-[#c3b5a0] bg-[#fbf7ee] px-6 lg:flex"
+      >
+        <div class="flex min-w-0 items-center gap-5">
+          <AppBreadcrumb />
+          <span class="hidden h-4 w-px bg-[#d8cebd] xl:block" />
+          <span class="hidden font-mono text-[7px] uppercase tracking-[0.18em] text-[#a29582] xl:block">
+            Zhiyan Journal of Computational Studies
+          </span>
+        </div>
+        <div class="flex shrink-0 items-center gap-3 font-mono text-[7px] tracking-[0.08em] text-[#9b8f7d]">
+          <span class="hidden items-center gap-1.5 sm:flex">
+            <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
+            INDEX HEALTHY
+          </span>
+          <span class="h-3 w-px bg-[#d8cebd]" />
+          <span class="hidden md:inline">VOL. 01 · NO. 07 / NOV 2026</span>
+          <span class="border border-[#d0c2ad] px-1.5 py-0.5 text-[#7d302f]">MOCK SSE</span>
+        </div>
       </header>
 
       <main class="min-h-0 min-w-0 flex-1 overflow-hidden">

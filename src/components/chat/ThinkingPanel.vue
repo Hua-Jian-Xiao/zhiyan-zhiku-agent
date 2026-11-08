@@ -37,50 +37,50 @@ const summary = computed(
 </script>
 
 <template>
-  <div class="mt-3.5 overflow-hidden rounded-xl border border-slate-200/90 bg-[#fafbfd]">
+  <div class="mt-4 overflow-hidden border border-[#d8cebd] border-t-2 border-t-[#211c17] bg-[#fbf6ec]">
     <button
       type="button"
-      class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-slate-50/80"
+      class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[#f6efe3]"
       @click="open = !open"
     >
       <span
-        class="grid h-6 w-6 shrink-0 place-items-center rounded-md border transition"
+        class="grid h-6 w-6 shrink-0 place-items-center border transition"
         :class="
           isRunning
-            ? 'border-indigo-200 bg-indigo-50 text-indigo-500'
-            : 'border-slate-200 bg-white text-slate-400'
+            ? 'border-[#d8b8b1] bg-[#f6e9e4] text-[#8e3d35]'
+            : 'border-[#d8cebd] bg-[#fffdf8] text-[#8d806e]'
         "
       >
         <el-icon :size="12" :class="{ 'animate-pulse': isRunning }"><Cpu /></el-icon>
       </span>
       <span class="min-w-0 flex-1">
         <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <span class="text-[11px] font-semibold text-slate-700">Agent 思考面板</span>
+          <span class="font-serif text-[12px] font-semibold text-[#2f2922]">Agent 思考面板</span>
           <span
             v-if="isRunning"
-            class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-1.5 py-px text-[8px] font-medium text-indigo-500"
+            class="inline-flex items-center gap-1 border border-[#d8b8b1] bg-[#f6e9e4] px-1.5 py-px font-mono text-[7px] tracking-[0.06em] text-[#8e3d35]"
           >
-            <span class="h-1 w-1 animate-pulse rounded-full bg-indigo-500" />
+            <span class="h-1 w-1 animate-pulse rounded-full bg-[#9a463c]" />
             思考中
           </span>
           <span
             v-else
-            class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-px text-[8px] font-medium text-emerald-600"
+            class="inline-flex items-center gap-1 border border-[#c3d5c6] bg-[#eef3ee] px-1.5 py-px font-mono text-[7px] tracking-[0.06em] text-[#48614c]"
           >
-            <span class="h-1 w-1 rounded-full bg-emerald-500" />
+            <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
             已完成
           </span>
         </span>
-        <span class="mt-0.5 block truncate text-[9px] text-slate-400">
+        <span class="mt-1 block truncate font-mono text-[7.5px] text-[#a29582]">
           {{ runningStep?.detail || summary }}
         </span>
       </span>
-      <span class="hidden shrink-0 font-mono text-[8px] text-slate-400 sm:inline">
+      <span class="hidden shrink-0 font-mono text-[7px] text-[#a29582] sm:inline">
         {{ summary }}
       </span>
       <el-icon
         :size="12"
-        class="shrink-0 text-slate-400 transition-transform duration-200"
+        class="shrink-0 text-[#a29582] transition-transform duration-200"
         :class="{ 'rotate-180': open }"
       >
         <ArrowDown />
@@ -88,12 +88,12 @@ const summary = computed(
     </button>
 
     <Transition name="panel">
-      <div v-if="open" class="border-t border-slate-200/80">
-        <div class="max-h-[440px] space-y-4 overflow-y-auto px-3.5 py-3.5 scroll-thin">
+      <div v-if="open" class="border-t border-[#d8cebd]">
+        <div class="max-h-[440px] space-y-5 overflow-y-auto px-3.5 py-4 scroll-thin">
           <section>
-            <div class="mb-2.5 flex items-center justify-between">
-              <p class="section-eyebrow !text-[8px]">思考过程</p>
-              <span class="font-mono text-[8px] text-slate-400">{{ doneSteps }}/{{ trace.steps.length }}</span>
+            <div class="mb-2.5 flex items-center justify-between border-b border-[#e2d9ca] pb-1.5">
+              <p class="section-eyebrow !text-[7.5px]">思考内容 / Trace</p>
+              <span class="font-mono text-[7px] text-[#a29582]">{{ doneSteps }}/{{ trace.steps.length }}</span>
             </div>
             <div>
               <div
@@ -154,15 +154,15 @@ const summary = computed(
           </section>
 
           <section>
-            <div class="mb-2 flex items-center justify-between">
-              <p class="section-eyebrow !text-[8px]">工具调用</p>
-              <span class="font-mono text-[8px] text-slate-400">{{ trace.tools.length }} calls</span>
+            <div class="mb-2 flex items-center justify-between border-b border-[#e2d9ca] pb-1.5">
+              <p class="section-eyebrow !text-[7.5px]">工具调用 / Tools</p>
+              <span class="font-mono text-[7px] text-[#a29582]">{{ trace.tools.length }} calls</span>
             </div>
             <div v-if="trace.tools.length" class="space-y-1.5">
               <div
                 v-for="tool in trace.tools"
                 :key="tool.id"
-                class="rounded-lg border border-slate-200/80 bg-white px-2.5 py-2"
+                class="border border-[#e0d6c6] bg-[#fffdf8] px-2.5 py-2"
               >
                 <div class="flex items-center gap-2">
                   <span
@@ -177,12 +177,13 @@ const summary = computed(
                     {{ formatDuration(tool.durationMs) }}
                   </span>
                 </div>
-                <p class="mt-1 truncate rounded bg-slate-50 px-1.5 py-1 font-mono text-[7.5px] text-slate-500">
-                  {{ tool.input }}
+                <p class="mt-1 flex items-start gap-1.5 rounded bg-slate-50 px-1.5 py-1 text-[7.5px] leading-4 text-slate-500">
+                  <span class="shrink-0 font-semibold text-slate-400">入参</span>
+                  <span class="min-w-0 break-all font-mono">{{ tool.input }}</span>
                 </p>
-                <p class="mt-1 flex items-start gap-1 text-[8px] leading-4 text-slate-400">
-                  <span class="text-emerald-500">↳</span>
-                  {{ tool.output }}
+                <p class="mt-1 flex items-start gap-1.5 text-[8px] leading-4 text-slate-400">
+                  <span class="shrink-0 font-semibold text-emerald-500">返回</span>
+                  <span class="min-w-0">{{ tool.output }}</span>
                 </p>
               </div>
             </div>
@@ -192,15 +193,15 @@ const summary = computed(
           </section>
 
           <section>
-            <div class="mb-2 flex items-center justify-between">
-              <p class="section-eyebrow !text-[8px]">检索知识片段</p>
-              <span class="font-mono text-[8px] text-slate-400">{{ trace.chunks.length }} chunks</span>
+            <div class="mb-2 flex items-center justify-between border-b border-[#e2d9ca] pb-1.5">
+              <p class="section-eyebrow !text-[7.5px]">检索知识片段 / Evidence</p>
+              <span class="font-mono text-[7px] text-[#a29582]">{{ trace.chunks.length }} chunks</span>
             </div>
             <div v-if="trace.chunks.length" class="space-y-1.5">
               <div
                 v-for="chunk in trace.chunks"
                 :key="chunk.id"
-                class="rounded-lg border border-slate-200/80 bg-white px-2.5 py-2"
+                class="border border-[#e0d6c6] bg-[#fffdf8] px-2.5 py-2"
               >
                 <div class="flex items-start gap-2">
                   <span class="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded bg-indigo-50 text-[7px] font-bold text-indigo-500">
@@ -214,7 +215,7 @@ const summary = computed(
                       </span>
                     </div>
                     <p class="mt-0.5 text-[7.5px] text-slate-400">
-                      {{ chunk.course }} · {{ chunk.chapter }}
+                      {{ chunk.course }} · {{ chunk.knowledgePointId }} · {{ chunk.chapter }}
                     </p>
                     <p class="mt-1 line-clamp-2 text-[8px] leading-4 text-slate-500">
                       {{ chunk.content }}

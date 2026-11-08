@@ -12,9 +12,12 @@ export interface AuthSession {
   signedAt: number
 }
 
+export type RetrievalMode = 'hybrid' | 'vector' | 'keyword'
+
 export interface RagConfig {
   topK: number
   threshold: number
+  retrievalMode: RetrievalMode
 }
 
 export interface Course {
@@ -51,6 +54,7 @@ export interface KnowledgeBaseOverview {
 
 export interface RetrievedChunk {
   id: string
+  knowledgePointId: string
   title: string
   course: string
   source: string
@@ -63,6 +67,7 @@ export interface RetrievedChunk {
 export interface Citation {
   id: string
   index: number
+  knowledgePointId: string
   title: string
   course: string
   source: string

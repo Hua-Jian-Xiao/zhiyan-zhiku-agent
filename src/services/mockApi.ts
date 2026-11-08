@@ -4,7 +4,7 @@ import {
   mockKnowledgeGraph,
   mockNcfItems,
   mockUsers,
-} from '@/data/mockData'
+} from '@/mock'
 import type {
   AuthSession,
   KnowledgeBaseOverview,
@@ -35,22 +35,20 @@ export async function mockLogin(account: string, password: string): Promise<Auth
   await delay(720)
   const normalizedAccount = account.trim()
 
-  if (!normalizedAccount || !password) {
-    throw new Error('请输入账号和密码')
-  }
-  if (normalizedAccount !== 'admin' || password !== '123456') {
-    throw new Error('账号或密码不正确，请使用演示账号 admin / 123456')
+  if (!normalizedAccount || password.length < 6) {
+    throw new Error('账号或密码格式不正确，请重新输入')
   }
 
+  const isDemoAccount = normalizedAccount === 'admin'
   return {
     token: `mock_token_${Date.now()}`,
     signedAt: Date.now(),
     user: {
-      id: 'user-admin',
+      id: isDemoAccount ? 'user-admin' : `user-${normalizedAccount}`,
       username: normalizedAccount,
-      displayName: '林晓',
+      displayName: isDemoAccount ? '林晓' : normalizedAccount,
       role: '计算机科学 · 学习者',
-      avatarText: '林',
+      avatarText: isDemoAccount ? '林' : normalizedAccount.slice(0, 1).toUpperCase(),
     },
   }
 }
@@ -65,10 +63,11 @@ export async function fetchKnowledgeGraph(signal?: AbortSignal): Promise<Knowled
   return clone(mockKnowledgeGraph)
 }
 
-function buildMetrics(query: string, chunks: number): RetrievalMetrics {
+function buildMetrics(query: string, chunks: number, config: RagConfig): RetrievalMetrics {
   const seed = hashString(query)
   const embeddingMs = 28 + (seed % 17)
-  const searchMs = 18 + ((seed >> 3) % 14) + chunks * 2
+  const modeCost = config.retrievalMode === 'hybrid' ? 12 : config.retrievalMode === 'keyword' ? 4 : 0
+  const searchMs = 18 + ((seed >> 3) % 14) + chunks * 2 + modeCost
   const rerankMs = chunks > 0 ? 36 + ((seed >> 5) % 23) : 0
   return {
     embeddingMs,
@@ -93,7 +92,7 @@ export async function retrieveKnowledge(
   return {
     query: normalized,
     chunks,
-    metrics: buildMetrics(normalized, chunks.length),
+    metrics: buildMetrics(normalized, chunks.length, config),
     config: { ...config },
   }
 }
@@ -117,7 +116,8 @@ export async function fetchNcfRecommendations(
       )
       const seed = hashString(`${userId}:${item.id}`)
       const jitter = (seed % 100) / 1000
-      const base = 0.54 + item.popularity / 420 + interestMatches.length * 0.075 + recentMatches.length * 0.032
+      const base =
+        0.54 + item.popularity / 420 + interestMatches.length * 0.075 + recentMatches.length * 0.032
       const score = Math.min(0.986, base + jitter)
       const matchTag = interestMatches[0] ?? recentMatches[0]
       const reason = matchTag

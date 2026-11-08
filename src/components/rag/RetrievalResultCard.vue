@@ -39,39 +39,42 @@ const scoreTone = computed(() => {
 
 <template>
   <article
-    class="group relative overflow-hidden rounded-2xl border border-slate-200/85 bg-white p-4 transition-all duration-200 hover:border-indigo-200 hover:shadow-[0_18px_44px_-32px_rgba(79,70,229,0.45)]"
+    class="group relative overflow-hidden border border-[#d8cebd] border-t-2 border-t-[#211c17] bg-[#fffdf8] p-4 transition-all duration-200 hover:border-[#b9ab97]"
   >
     <span
       v-if="rank === 1"
-      class="absolute inset-y-0 left-0 w-[2px] bg-gradient-to-b from-indigo-500 to-cyan-400"
+      class="absolute inset-y-0 left-0 w-[2px] bg-[#7d302f]"
     />
 
     <div class="flex items-start gap-3">
       <div class="flex shrink-0 flex-col items-center gap-1">
         <span
-          class="grid h-8 w-8 place-items-center rounded-lg border font-mono text-[10px] font-semibold"
-          :class="rank === 1 ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-200 bg-slate-50 text-slate-500'"
+          class="grid h-8 w-8 place-items-center border font-serif text-[12px] font-semibold"
+          :class="rank === 1 ? 'border-[#c99f98] bg-[#f6e9e4] text-[#7d302f]' : 'border-[#d8cebd] bg-[#f8f3e9] text-[#6f6456]'"
         >
           {{ rankLabel }}
         </span>
-        <span class="text-[7px] text-slate-300">RANK</span>
+        <span class="font-mono text-[6px] tracking-[0.1em] text-[#b5a995]">RANK</span>
       </div>
 
       <div class="min-w-0 flex-1">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1.5">
-              <span class="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[7.5px] font-medium text-indigo-500">
+              <span class="border border-[#d8b8b1] bg-[#f6e9e4] px-1.5 py-0.5 text-[7.5px] font-medium text-[#8e3d35]">
                 {{ chunk.course }}
               </span>
-              <span class="rounded border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[7.5px] text-slate-400">
+              <span class="border border-[#e1d0aa] bg-[#faf3e3] px-1.5 py-0.5 font-mono text-[7.5px] text-[#8a692a]">
+                {{ chunk.knowledgePointId }}
+              </span>
+              <span class="border border-[#e2d9ca] bg-[#f8f3e9] px-1.5 py-0.5 text-[7.5px] text-[#8d806e]">
                 {{ chunk.chapter }}
               </span>
             </div>
-            <h3 class="mt-1.5 text-[12px] font-semibold leading-5 text-slate-700">
+            <h3 class="mt-1.5 font-serif text-[13px] font-semibold leading-5 text-[#2f2922]">
               {{ chunk.title }}
             </h3>
-            <p class="mt-1 flex min-w-0 items-center gap-1 text-[8px] text-slate-400">
+            <p class="mt-1 flex min-w-0 items-center gap-1 font-mono text-[7px] text-[#a29582]">
               <el-icon :size="9"><Document /></el-icon>
               <span class="truncate">{{ chunk.source }}</span>
             </p>
@@ -79,28 +82,28 @@ const scoreTone = computed(() => {
 
           <div class="shrink-0 text-right">
             <span
-              class="rounded-lg border px-2 py-1 font-mono text-[13px] font-semibold"
+              class="border px-2 py-1 font-mono text-[14px] font-semibold"
               :class="[scoreTone.text, scoreTone.bg, scoreTone.border]"
             >
               {{ chunk.score.toFixed(3) }}
             </span>
-            <p class="mt-1 font-mono text-[7px] text-slate-300">SIMILARITY</p>
+            <p class="mt-1 font-mono text-[6px] tracking-[0.1em] text-[#b5a995]">SIMILARITY</p>
           </div>
         </div>
 
-        <div class="mt-3 h-1 overflow-hidden rounded-full bg-slate-100">
+        <div class="mt-3 h-px overflow-hidden bg-[#e2d9ca]">
           <div
-            class="h-full rounded-full bg-gradient-to-r transition-all duration-700"
+            class="h-full transition-all duration-700"
             :class="scoreTone.bar"
             :style="{ width: `${Math.max(6, chunk.score * 100)}%` }"
           />
         </div>
 
-        <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+        <div class="mt-3 border-l-2 border-[#9a463c] bg-[#f8f3e9] px-3 py-2.5">
           <div class="mb-1 flex items-center gap-1.5">
-            <span class="h-1 w-1 rounded-full bg-indigo-400" />
-            <span class="text-[7.5px] font-semibold uppercase tracking-wider text-slate-400">
-              Retrieved Chunk
+            <span class="h-1 w-1 rounded-full bg-[#9a463c]" />
+            <span class="font-mono text-[6.5px] font-medium uppercase tracking-[0.14em] text-[#a29582]">
+              Retrieved passage / 原文
             </span>
           </div>
           <p
@@ -122,11 +125,11 @@ const scoreTone = computed(() => {
         </div>
 
         <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <el-icon :size="9" class="text-slate-300"><PriceTag /></el-icon>
+          <el-icon :size="8" class="text-[#b5a995]"><PriceTag /></el-icon>
           <span
             v-for="tag in chunk.tags"
             :key="tag"
-            class="rounded bg-slate-50 px-1.5 py-0.5 text-[7.5px] text-slate-400"
+            class="border-b border-[#e2d9ca] px-1 py-0.5 font-mono text-[6.5px] text-[#a29582]"
           >
             #{{ tag }}
           </span>

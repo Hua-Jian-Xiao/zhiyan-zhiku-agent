@@ -10,6 +10,7 @@ import {
 } from '@element-plus/icons-vue'
 import type { ChatMessage } from '@/types'
 import { useRagStore } from '@/stores/rag'
+import { getRetrievalModeLabel } from '@/utils/rag'
 
 const props = defineProps<{
   isStreaming: boolean
@@ -31,80 +32,79 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
 </script>
 
 <template>
-  <aside class="flex h-full w-full flex-col bg-[#fbfcfe]">
-    <header class="flex h-[66px] shrink-0 items-center justify-between border-b border-slate-100 px-4">
+  <aside class="flex h-full w-full flex-col bg-[#f8f3e9]">
+    <header class="flex h-[66px] shrink-0 items-center justify-between border-b border-[#d8cebd] px-4">
       <div>
-        <p class="text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Run Context
+        <p class="font-mono text-[7px] font-medium uppercase tracking-[0.2em] text-[#a29582]">
+          Run Context / 现场
         </p>
-        <h2 class="mt-1 text-[13px] font-semibold tracking-tight text-ink-950">Agent 运行台</h2>
+        <h2 class="mt-1.5 font-serif text-[15px] font-medium tracking-[-0.01em] text-[#211c17]">Agent 运行台</h2>
       </div>
       <span
-        class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[8px] font-medium"
+        class="inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[7px] tracking-[0.06em]"
         :class="
           isStreaming
-            ? 'border-indigo-100 bg-indigo-50 text-indigo-500'
-            : 'border-emerald-100 bg-emerald-50 text-emerald-600'
+            ? 'border-[#d8b8b1] bg-[#f6e9e4] text-[#8e3d35]'
+            : 'border-[#c3d5c6] bg-[#eef3ee] text-[#48614c]'
         "
       >
         <span
-          class="h-1.5 w-1.5 rounded-full"
-          :class="isStreaming ? 'animate-pulse bg-indigo-500' : 'bg-emerald-400'"
+          class="h-1 w-1 rounded-full"
+          :class="isStreaming ? 'animate-pulse bg-[#9a463c]' : 'bg-[#5c7a60]'"
         />
         {{ statusLabel }}
       </span>
     </header>
 
     <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3.5 scroll-thin">
-      <section class="relative overflow-hidden rounded-2xl bg-[#0b1326] p-4 text-white">
+      <section class="relative overflow-hidden border border-[#3d3328] bg-[#1a1510] p-4 text-[#f3e8d7]">
         <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div class="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-indigo-500/25 blur-2xl" />
-          <div class="absolute -bottom-16 -left-10 h-28 w-28 rounded-full bg-cyan-400/10 blur-2xl" />
-          <div class="absolute inset-0 dot-grid opacity-[0.07]" />
+          <div class="absolute inset-0 dot-grid opacity-[0.04]" />
+          <span class="absolute -right-2 -top-7 font-serif text-[96px] leading-none text-[#9a463c]/20">§</span>
         </div>
 
-        <div class="relative flex items-start justify-between">
+        <div class="relative flex items-start justify-between border-b border-[#3d3328] pb-2.5">
           <div class="flex items-center gap-2">
-            <span class="grid h-7 w-7 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-cyan-300">
-              <el-icon :size="14"><MagicStick /></el-icon>
+            <span class="grid h-7 w-7 place-items-center border border-[#5a4b3a] bg-[#241e18] text-[#c39e40]">
+              <el-icon :size="13"><MagicStick /></el-icon>
             </span>
             <div>
-              <p class="text-[10px] font-semibold text-white">RAG-Agent</p>
-              <p class="mt-0.5 font-mono text-[7.5px] text-slate-500">v2.4 · local mock</p>
+              <p class="font-serif text-[11px] font-medium text-[#f3e8d7]">RAG-Agent</p>
+              <p class="mt-0.5 font-mono text-[6.5px] tracking-[0.08em] text-[#817463]">v2.4 / LOCAL MOCK</p>
             </div>
           </div>
-          <span class="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[7px] text-slate-500">
+          <span class="border border-[#4c4032] px-1.5 py-0.5 font-mono text-[6.5px] tracking-[0.1em] text-[#9dbaa2]">
             ONLINE
           </span>
         </div>
 
-        <p class="relative mt-3 text-[9px] leading-4 text-slate-400">
+        <p class="relative mt-3 font-serif text-[9.5px] leading-[1.8] text-[#a49581]">
           面向计算机学科的检索增强学习 Agent，回答会显式绑定知识库证据。
         </p>
 
         <div class="relative mt-3.5 grid grid-cols-3 gap-1.5">
-          <div class="rounded-lg border border-white/[0.06] bg-white/[0.035] px-2 py-1.5">
-            <p class="font-mono text-[13px] font-semibold text-white">
-              {{ doneSteps }}<span class="text-[7px] text-slate-600">/{{ totalSteps }}</span>
+          <div class="border border-[#3d3328] px-2 py-1.5">
+            <p class="font-serif text-[16px] leading-none text-[#f3e8d7]">
+              {{ doneSteps }}<span class="font-mono text-[7px] text-[#817463]">/{{ totalSteps }}</span>
             </p>
-            <p class="mt-0.5 text-[7px] text-slate-500">思考步骤</p>
+            <p class="mt-1.5 font-mono text-[6px] uppercase tracking-[0.1em] text-[#817463]">TRACE</p>
           </div>
-          <div class="rounded-lg border border-white/[0.06] bg-white/[0.035] px-2 py-1.5">
-            <p class="font-mono text-[13px] font-semibold text-white">{{ toolCount }}</p>
-            <p class="mt-0.5 text-[7px] text-slate-500">工具调用</p>
+          <div class="border border-[#3d3328] px-2 py-1.5">
+            <p class="font-serif text-[16px] leading-none text-[#f3e8d7]">{{ toolCount }}</p>
+            <p class="mt-1.5 font-mono text-[6px] uppercase tracking-[0.1em] text-[#817463]">TOOLS</p>
           </div>
-          <div class="rounded-lg border border-white/[0.06] bg-white/[0.035] px-2 py-1.5">
-            <p class="font-mono text-[13px] font-semibold text-white">{{ chunkCount }}</p>
-            <p class="mt-0.5 text-[7px] text-slate-500">召回片段</p>
+          <div class="border border-[#3d3328] px-2 py-1.5">
+            <p class="font-serif text-[16px] leading-none text-[#f3e8d7]">{{ chunkCount }}</p>
+            <p class="mt-1.5 font-mono text-[6px] uppercase tracking-[0.1em] text-[#817463]">EVIDENCE</p>
           </div>
         </div>
 
-        <div class="relative mt-3 flex items-center justify-between text-[7.5px] text-slate-500">
+        <div class="relative mt-3 flex items-center justify-between border-t border-[#3d3328] pt-2.5 font-mono text-[6.5px] text-[#817463]">
           <span class="flex items-center gap-1">
-            <el-icon :size="9"><Timer /></el-icon>
-            {{ latestMessage?.latencyMs ? `${(latestMessage.latencyMs / 1000).toFixed(1)}s 最近耗时` : '等待首轮推理' }}
+            <el-icon :size="8"><Timer /></el-icon>
+            {{ latestMessage?.latencyMs ? `${(latestMessage.latencyMs / 1000).toFixed(1)}s LAST RUN` : 'AWAITING FIRST RUN' }}
           </span>
-          <span class="font-mono">ctx: 8k</span>
+          <span>CTX: 8K</span>
         </div>
       </section>
 
@@ -172,7 +172,13 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
             </p>
           </div>
         </div>
-        <p class="mt-2 text-[7.5px] leading-3.5 text-slate-400">
+        <div class="mt-2 flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50/60 px-2.5 py-2">
+          <span class="text-[7.5px] text-slate-400">检索模式</span>
+          <span class="text-[9px] font-semibold text-indigo-600">
+            {{ getRetrievalModeLabel(ragStore.config.retrievalMode) }}
+          </span>
+        </div>
+        <p class="mt-2 text-[7.5px] leading-4 text-slate-400">
           参数与「知识库管理」「RAG 检索调试」实时同步
         </p>
       </section>
@@ -195,6 +201,9 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
               <p class="min-w-0 flex-1 truncate text-[8px] font-medium text-slate-600">
                 {{ citation.title }}
               </p>
+              <span class="shrink-0 font-mono text-[6.5px] text-slate-400">
+                {{ citation.knowledgePointId }}
+              </span>
               <span class="font-mono text-[7px] text-emerald-500">{{ citation.score.toFixed(3) }}</span>
             </div>
           </div>
@@ -226,7 +235,7 @@ const recentCitations = computed(() => citations.value.slice(0, 3))
 
     <footer class="shrink-0 border-t border-slate-100 px-4 py-2.5">
       <p class="text-center font-mono text-[7.5px] tracking-wide text-slate-300">
-        MOCK RAG PIPELINE · NO MASTERY DATA
+        MOCK RAG PIPELINE · LOCAL DEMO
       </p>
     </footer>
   </aside>

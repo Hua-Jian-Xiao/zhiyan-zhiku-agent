@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChatLineRound, Delete, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Plus, Search } from '@element-plus/icons-vue'
 import type { Conversation } from '@/types'
 import { formatRelativeTime } from '@/utils/format'
 import StatePanel from '@/components/feedback/StatePanel.vue'
@@ -33,105 +33,98 @@ function messageCount(conversation: Conversation): number {
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col bg-[#fbfcfe]">
-    <header class="px-4 pb-3 pt-5">
-      <div class="flex items-center justify-between">
+  <div class="flex h-full w-full flex-col bg-[#f8f3e9]">
+    <header class="border-b border-[#d8cebd] px-4 pb-3.5 pt-5">
+      <div class="flex items-start justify-between">
         <div>
-          <p class="text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-            Conversations
+          <p class="font-mono text-[7px] font-medium uppercase tracking-[0.2em] text-[#a29582]">
+            Contents / 目录
           </p>
-          <h2 class="mt-1 text-[16px] font-bold tracking-tight text-ink-950">会话</h2>
+          <h2 class="mt-1.5 font-serif text-[19px] font-medium tracking-[-0.02em] text-[#211c17]">会话目录</h2>
         </div>
         <el-tooltip content="新建会话" placement="bottom" :show-after="300">
           <button
             type="button"
-            class="grid h-8 w-8 place-items-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-500 transition hover:border-indigo-200 hover:bg-indigo-100 active:scale-95"
+            class="grid h-7 w-7 place-items-center border border-[#b9ab97] bg-[#682728] text-[#f8f1e5] transition hover:bg-[#552222] active:translate-y-px"
             aria-label="新建会话"
             @click="emit('create')"
           >
-            <el-icon :size="14"><Plus /></el-icon>
+            <el-icon :size="13"><Plus /></el-icon>
           </button>
         </el-tooltip>
       </div>
 
-      <div class="relative mt-4">
-        <el-icon
-          :size="13"
-          class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-        >
+      <div class="app-search mt-4 w-full">
+        <el-icon :size="11" class="shrink-0 text-[#a29582]">
           <Search />
         </el-icon>
         <input
           v-model="keyword"
           type="search"
-          placeholder="搜索会话"
-          class="h-8 w-full rounded-lg border border-slate-200/80 bg-white pl-8 pr-3 text-[10px] text-slate-600 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50"
+          placeholder="检索会话"
+          aria-label="搜索会话"
         />
       </div>
     </header>
 
-    <div class="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4 scroll-thin">
+    <div class="min-h-0 flex-1 overflow-y-auto pb-4 scroll-thin">
       <div v-if="filteredConversations.length > 0">
         <p
           v-if="!keyword"
-          class="mb-1.5 px-2 text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400"
+          class="px-4 pb-1.5 pt-3 font-mono text-[7px] uppercase tracking-[0.18em] text-[#a29582]"
         >
-          最近会话
+          Recent Notes / 最近
         </p>
         <button
-          v-for="conversation in filteredConversations"
+          v-for="(conversation, index) in filteredConversations"
           :key="conversation.id"
           type="button"
-          class="conversation-item group relative mb-1 flex w-full flex-col rounded-xl border px-2.5 py-2.5 text-left transition-all duration-200"
+          class="conversation-item group relative flex w-full flex-col border-b border-[#e2d9ca] px-4 py-3 text-left transition-all duration-200"
           :class="
             conversation.id === activeId
-              ? 'border-indigo-100 bg-white shadow-[0_8px_26px_-20px_rgba(79,70,229,0.6)]'
-              : 'border-transparent hover:border-slate-100 hover:bg-white/80'
+              ? 'bg-[#fffdf8]'
+              : 'hover:bg-[#fbf7ee]'
           "
           @click="emit('select', conversation.id)"
         >
           <span
             v-if="conversation.id === activeId"
-            class="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-r-full bg-indigo-500"
+            class="absolute bottom-0 left-0 top-0 w-[2px] bg-[#9a463c]"
           />
           <div class="flex items-center gap-2">
             <span
-              class="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition"
-              :class="
-                conversation.id === activeId
-                  ? 'bg-indigo-50 text-indigo-500'
-                  : 'bg-slate-100/80 text-slate-400'
-              "
+              class="w-4 shrink-0 font-mono text-[7px]"
+              :class="conversation.id === activeId ? 'text-[#9a463c]' : 'text-[#b5a995]'"
             >
-              <el-icon :size="13"><ChatLineRound /></el-icon>
+              {{ String(index + 1).padStart(2, '0') }}
             </span>
             <span
-              class="min-w-0 flex-1 truncate text-[11px] font-medium"
-              :class="conversation.id === activeId ? 'text-slate-800' : 'text-slate-600'"
+              class="min-w-0 flex-1 truncate font-serif text-[11.5px] font-medium leading-5"
+              :class="conversation.id === activeId ? 'text-[#211c17]' : 'text-[#5b5145]'"
             >
               {{ conversation.title || '新的学习会话' }}
             </span>
             <span
               v-if="streaming && conversation.id === activeId"
-              class="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-indigo-500"
+              class="h-1 w-1 shrink-0 animate-pulse rounded-full bg-[#9a463c]"
             />
             <span
-              class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
+              class="grid h-5 w-5 shrink-0 place-items-center text-[#a29582] opacity-0 transition hover:bg-[#f4e9e4] hover:text-[#8e3d35] group-hover:opacity-100"
               role="button"
               tabindex="0"
               aria-label="删除会话"
               @click.stop="emit('remove', conversation)"
               @keydown.enter.stop="emit('remove', conversation)"
             >
-              <el-icon :size="11"><Delete /></el-icon>
+              <el-icon :size="10"><Delete /></el-icon>
             </span>
           </div>
-          <div class="mt-1 flex items-center gap-1.5 pl-9 text-[8px] text-slate-400">
-            <span>{{ messageCount(conversation) }} 轮对话</span>
-            <span class="text-slate-300">·</span>
+          <div class="mt-1 flex items-center gap-1.5 pl-6 font-mono text-[7px] text-[#a29582]">
+            <span>{{ messageCount(conversation) }} NOTES</span>
+            <span class="text-[#d8cebd]">/</span>
             <span>{{ formatRelativeTime(conversation.updatedAt) }}</span>
-            <span v-if="conversation.messages.some((message) => message.citations.length > 0)" class="ml-auto flex items-center gap-0.5 text-indigo-400">
-              <span class="h-1 w-1 rounded-full bg-indigo-400" />
+            <span v-if="conversation.messages.some((message) => message.citations.length > 0)" class="ml-auto flex items-center gap-0.5 text-[#9a463c]">
+              <span class="h-1 w-1 rounded-full bg-[#9a463c]" />
               RAG
             </span>
           </div>
@@ -157,13 +150,13 @@ function messageCount(conversation: Conversation): number {
       />
     </div>
 
-    <footer class="border-t border-slate-100 px-4 py-3">
-      <div class="flex items-center justify-between">
-        <span class="flex items-center gap-1.5 text-[8px] text-slate-400">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          本地会话自动保存
+    <footer class="border-t border-[#d8cebd] px-4 py-3">
+      <div class="flex items-center justify-between font-mono text-[7px] uppercase tracking-[0.08em] text-[#a29582]">
+        <span class="flex items-center gap-1.5">
+          <span class="h-1 w-1 rounded-full bg-[#5c7a60]" />
+          Local archive
         </span>
-        <span class="font-mono text-[8px] text-slate-300">SSE MOCK</span>
+        <span>SSE MOCK</span>
       </div>
     </footer>
   </div>

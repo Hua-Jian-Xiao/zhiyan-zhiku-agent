@@ -119,7 +119,7 @@ function categoryLabel(key: GraphCategory): string {
 }
 
 function categoryColor(key: GraphCategory): string {
-  return graphData.value?.categories.find((category) => category.key === key)?.color ?? '#6366f1'
+  return graphData.value?.categories.find((category) => category.key === key)?.color ?? '#7d302f'
 }
 
 async function loadGraph(showToast = false): Promise<void> {
@@ -182,17 +182,18 @@ function buildChartOption(): EChartsOption {
       symbol: 'circle',
       symbolSize: Math.min(46, 16 + degree * 3.6),
       itemStyle: {
-        color: category?.color ?? '#6366f1',
+        color: category?.color ?? '#7d302f',
         borderColor: '#ffffff',
         borderWidth: 2,
         shadowBlur: 14,
-        shadowColor: `${category?.color ?? '#6366f1'}44`,
+        shadowColor: `${category?.color ?? '#7d302f'}44`,
       },
       label: {
         show: true,
         position: 'right' as const,
-        color: '#475569',
-        fontSize: 9.5,
+        color: '#4d453b',
+        fontFamily: 'Georgia, "Songti SC", SimSun, serif',
+        fontSize: 10,
         fontWeight: 500,
       },
       description: node.description,
@@ -213,12 +214,12 @@ function buildChartOption(): EChartsOption {
     tooltip: {
       trigger: 'item',
       confine: true,
-      backgroundColor: '#0b1326',
+      backgroundColor: '#1a1510',
       borderWidth: 0,
       padding: [10, 12],
-      textStyle: { color: '#e2e8f0', fontSize: 11 },
+      textStyle: { color: '#e9dece', fontSize: 11, fontFamily: 'Georgia, "Songti SC", SimSun, serif' },
       extraCssText:
-        'border-radius:10px;box-shadow:0 18px 40px -18px rgba(15,23,42,0.55);max-width:280px;',
+        'border-radius:1px;border:1px solid #4b3f32;box-shadow:0 18px 40px -18px rgba(25,21,17,0.45);max-width:280px;',
       formatter: (params: any) => {
         const item = params.data ?? {}
         if (params.dataType === 'edge') {
@@ -233,12 +234,12 @@ function buildChartOption(): EChartsOption {
         const category = categoryMeta.get(node.category)
         const dependentsCount = data.edges.filter((edge) => edge.source === node.id).length
         return `<div style="display:flex;align-items:center;gap:6px;">
-            <span style="width:6px;height:6px;border-radius:99px;background:${category?.color ?? '#6366f1'};"></span>
+            <span style="width:6px;height:6px;border-radius:99px;background:${category?.color ?? '#7d302f'};"></span>
             <span style="font-size:9px;color:#94a3b8;">${category?.label ?? ''}</span>
           </div>
           <div style="margin-top:4px;font-weight:600;color:#f8fafc;font-size:12px;">${node.name}</div>
           <div style="margin-top:5px;color:#94a3b8;font-size:10px;line-height:1.6;">${truncate(node.description, 64)}</div>
-          <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(148,163,184,0.14);color:#64748b;font-size:9px;">
+          <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(194,178,156,0.18);color:#9d8f7c;font-size:9px;">
             前置 ${node.prerequisites.length} · 直接后继 ${dependentsCount} · 点击查看详情
           </div>`
       },
@@ -278,12 +279,12 @@ function buildChartOption(): EChartsOption {
           scale: 1.06,
           label: {
             show: true,
-            color: '#1e293b',
+            color: '#2f2922',
             fontSize: 11,
             fontWeight: 600,
           },
-          lineStyle: { color: '#6366f1', opacity: 0.9, width: 2 },
-          itemStyle: { borderColor: '#eef2ff', borderWidth: 3 },
+          lineStyle: { color: '#7d302f', opacity: 0.9, width: 2 },
+          itemStyle: { borderColor: '#fffdf8', borderWidth: 3 },
         },
         blur: {
           label: { opacity: 0.2 },
@@ -291,8 +292,8 @@ function buildChartOption(): EChartsOption {
           lineStyle: { opacity: 0.08 },
         },
         select: {
-          label: { color: '#1e293b', fontSize: 11, fontWeight: 700 },
-          itemStyle: { borderColor: '#4f46e5', borderWidth: 3 },
+          label: { color: '#2f2922', fontSize: 11, fontWeight: 700 },
+          itemStyle: { borderColor: '#7d302f', borderWidth: 3 },
         },
       },
     ],
@@ -403,7 +404,7 @@ onBeforeUnmount(() => {
       <PageHeader
         eyebrow="Knowledge Dependencies"
         title="知识图谱"
-        description="以力导向图呈现计算机学科知识点之间的客观先修关系。图谱不包含用户掌握度、推荐权重或学习画像。"
+        description="以力导向图呈现计算机学科知识点之间的客观先修关系。图谱只描述课程知识结构，不包含推荐权重。"
       >
         <template #actions>
           <span
@@ -421,14 +422,14 @@ onBeforeUnmount(() => {
       </PageHeader>
 
       <div
-        class="mt-5 flex items-start gap-2.5 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/90 via-white to-cyan-50/60 px-4 py-3"
+        class="mt-5 flex items-start gap-3 border-y border-[#c9bdab] bg-[#fbf7ee] px-4 py-3"
       >
-        <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-white text-indigo-500 shadow-sm">
+        <span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center border border-[#c99f98] text-[#7d302f]">
           <el-icon :size="11"><Connection /></el-icon>
         </span>
         <div class="min-w-0">
-          <p class="text-[9px] font-semibold text-indigo-700">客观依赖视图</p>
-          <p class="mt-0.5 text-[8.5px] leading-4 text-slate-500">
+          <p class="font-mono text-[7.5px] font-medium uppercase tracking-[0.12em] text-[#7d302f]">Objective dependency view / 客观依赖</p>
+          <p class="mt-1 text-[8.5px] leading-4 text-[#766b5b]">
             节点表示知识点，箭头表示「先修 → 后继」的课程依赖。所有关系来自课程大纲，与任何用户学习数据无关。
           </p>
         </div>
@@ -525,7 +526,15 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <div class="mx-4 overflow-hidden rounded-2xl border border-slate-100 graph-canvas">
+          <StatePanel
+            v-if="graphData.nodes.length === 0"
+            type="empty"
+            title="知识图谱暂无可视化节点"
+            description="当前筛选条件下没有可展示的知识点，请稍后刷新图谱。"
+            action-text="刷新图谱"
+            @action="loadGraph()"
+          />
+          <div v-else class="mx-4 overflow-hidden rounded-2xl border border-slate-100 graph-canvas">
             <div ref="chartContainer" class="h-[590px] w-full" />
           </div>
 
@@ -536,7 +545,7 @@ onBeforeUnmount(() => {
               <span class="flex items-center gap-1"><span class="h-1 w-1 rounded-full bg-emerald-400" />点击查看依赖</span>
             </p>
             <span class="font-mono text-[7.5px] text-slate-300">
-              COURSE SYLLABUS GRAPH · NO MASTERY DATA
+              OBJECTIVE COURSE DEPENDENCY GRAPH
             </span>
           </div>
         </section>
@@ -562,9 +571,9 @@ onBeforeUnmount(() => {
           <section class="surface-card overflow-hidden">
             <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <div>
-                <p class="text-[10px] font-semibold text-slate-700">节点详情</p>
+                <p class="text-[10px] font-semibold text-slate-700">知识点详情卡</p>
                 <p class="mt-0.5 text-[8px] text-slate-400">
-                  {{ selectedNode ? '查看客观先修与后继方向' : '从图谱中选择一个知识点' }}
+                  {{ selectedNode ? '点击节点后弹出的客观依赖详情' : '从图谱中选择一个知识点' }}
                 </p>
               </div>
               <button
@@ -578,7 +587,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
 
-            <div v-if="selectedNode" class="p-4">
+            <div v-if="selectedNode" class="animate-fade-up p-4">
               <div class="flex items-start gap-3">
                 <span
                   class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[12px] font-bold"
@@ -609,6 +618,9 @@ onBeforeUnmount(() => {
                   <h3 class="mt-1.5 text-[14px] font-bold text-slate-800">{{ selectedNode.name }}</h3>
                   <p class="mt-0.5 text-[8px] text-slate-400">
                     {{ selectedNode.relatedCourse }} · 连接度 {{ selectedDegree }}
+                  </p>
+                  <p class="mt-1 font-mono text-[7px] uppercase tracking-wider text-slate-300">
+                    NODE {{ selectedNode.id }}
                   </p>
                 </div>
               </div>
@@ -690,7 +702,7 @@ onBeforeUnmount(() => {
                   客观依赖
                 </span>
                 <span class="rounded-md border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[7.5px] text-slate-400">
-                  无掌握度
+                  仅客观关系
                 </span>
                 <span class="rounded-md border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[7.5px] text-slate-400">
                   可放大拖拽
@@ -743,7 +755,7 @@ onBeforeUnmount(() => {
               数据边界说明
             </p>
             <p class="mt-1.5 text-[8.5px] leading-4 text-slate-400">
-              图谱仅编码课程大纲中的客观先修关系，不包含用户掌握度、学习行为或推荐排序。NCF 推荐为独立附属演示，不会写回图谱。
+              图谱仅编码课程大纲中的客观先修关系，不包含推荐排序。NCF推荐Demo为独立附属演示，不会写回图谱。
             </p>
           </div>
         </aside>
@@ -755,35 +767,38 @@ onBeforeUnmount(() => {
 <style scoped>
 .graph-canvas {
   background:
-    radial-gradient(circle at 50% 42%, rgba(238, 242, 255, 0.72), transparent 58%),
-    radial-gradient(circle at 82% 85%, rgba(207, 250, 254, 0.36), transparent 42%),
-    #fcfdff;
+    linear-gradient(90deg, rgba(125, 48, 47, 0.025) 1px, transparent 1px),
+    linear-gradient(rgba(125, 48, 47, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(244, 236, 221, 0.85), transparent 62%),
+    #fbf8f1;
+  background-size: 24px 24px, 24px 24px, 100% 100%, 100% 100%;
 }
 
 .graph-domain-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 8px;
-  color: #94a3b8;
-  font-size: 8px;
-  background: #fafbfd;
-  border: 1px solid #edf1f7;
-  border-radius: 7px;
+  padding: 3px 1px;
+  color: #a29582;
+  font-family: var(--app-mono);
+  font-size: 7.5px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.16s ease;
 }
 
 .graph-domain-chip:hover {
-  color: #64748b;
-  border-color: #dbe3ef;
+  color: #6f6456;
 }
 
 .graph-domain-chip.is-active {
-  color: #475569;
-  background: #fff;
-  border-color: #dfe6f0;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.035);
+  color: #4d453b;
+  background: transparent;
+  border-bottom-color: #7d302f;
+  box-shadow: none;
 }
 
 .related-node-chip {
@@ -791,18 +806,18 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
   padding: 3px 7px;
-  color: #64748b;
+  color: #6f6456;
   font-size: 8px;
-  background: #f8fafc;
-  border: 1px solid #edf1f7;
-  border-radius: 6px;
+  background: #fbf7ee;
+  border: 1px solid #ded4c4;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.16s ease;
 }
 
 .related-node-chip:hover {
-  color: #4f46e5;
-  background: #f5f3ff;
-  border-color: #ddd6fe;
+  color: #7d302f;
+  background: #f6ece4;
+  border-color: #c99f98;
 }
 </style>

@@ -9,7 +9,7 @@ import {
   User,
   WarningFilled,
 } from '@element-plus/icons-vue'
-import { mockUsers } from '@/data/mockData'
+import { mockUsers } from '@/mock'
 import { fetchNcfRecommendations } from '@/services/mockApi'
 import type { NcfResult } from '@/types'
 import { isAbortError } from '@/utils/async'
@@ -34,8 +34,6 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const result = ref<NcfResult | null>(null)
 let controller: AbortController | null = null
-
-const selectedUser = computed(() => mockUsers.find((user) => user.id === selectedUserId.value))
 
 watch([selectedUserId, topK], () => {
   if (!isLoading.value) {
@@ -103,29 +101,26 @@ onBeforeUnmount(() => {
     <div class="ncf-demo">
       <header class="ncf-hero">
         <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div class="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-cyan-400/15 blur-[80px]" />
-          <div class="absolute -left-24 bottom-0 h-56 w-56 rounded-full bg-indigo-400/20 blur-[90px]" />
-          <div class="absolute inset-0 dot-grid opacity-[0.08]" />
+          <div class="absolute inset-0 dot-grid opacity-[0.04]" />
+          <span class="absolute -right-2 -top-8 font-serif text-[130px] leading-none text-[#9a463c]/15">§</span>
         </div>
 
         <div class="relative flex items-start justify-between gap-4">
           <div>
             <div class="flex items-center gap-2">
-              <span
-                class="rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-0.5 text-[9px] font-semibold tracking-[0.16em] text-amber-200"
-              >
-                ANNEX DEMO
+              <span class="border border-[#6d5225]/60 px-2 py-0.5 font-mono text-[8px] font-medium tracking-[0.16em] text-[#c39e40]">
+                ANNEX / SUPPLEMENT
               </span>
-              <span class="text-[10px] text-slate-500">独立实验功能，不进入核心 RAG 流程</span>
+              <span class="font-mono text-[8px] tracking-[0.04em] text-[#817463]">独立实验功能 · 不进入核心 RAG 流程</span>
             </div>
             <div class="mt-4 flex items-center gap-3">
-              <span class="grid h-11 w-11 place-items-center rounded-2xl bg-white/[0.08] text-cyan-300">
-                <el-icon :size="22"><MagicStick /></el-icon>
+              <span class="grid h-11 w-11 place-items-center border border-[#5a4b3a] bg-[#241e18] text-[#c39e40]">
+                <el-icon :size="21"><MagicStick /></el-icon>
               </span>
               <div>
-                <h2 class="text-[21px] font-bold tracking-tight text-white">NCF 个性化推荐</h2>
-                <p class="mt-0.5 text-xs text-slate-400">
-                  Neural Collaborative Filtering · 用学习行为预测下一步该学什么
+                <h2 class="font-serif text-[23px] font-medium tracking-[-0.01em] text-[#f4ead9]">NCF推荐Demo</h2>
+                <p class="mt-1 font-mono text-[8px] tracking-[0.04em] text-[#9d8f7c]">
+                  NEURAL COLLABORATIVE FILTERING · 神经协同过滤推荐演示
                 </p>
               </div>
             </div>
@@ -193,7 +188,7 @@ onBeforeUnmount(() => {
                   class="h-2 w-2 shrink-0 rounded-full border"
                   :class="
                     selectedUserId === userItem.id
-                      ? 'border-indigo-500 bg-indigo-500 shadow-[0_0_0_3px_rgba(99,102,241,0.12)]'
+                      ? 'border-[#7d302f] bg-[#7d302f] shadow-[0_0_0_3px_rgba(125,48,47,0.1)]'
                       : 'border-slate-300 bg-white'
                   "
                 />
@@ -258,39 +253,39 @@ onBeforeUnmount(() => {
           <div v-if="!result && !isLoading && !errorMessage" class="ncf-empty">
             <div class="relative h-24 w-36" aria-hidden="true">
               <svg viewBox="0 0 180 110" fill="none" class="h-full w-full">
-                <g stroke="#CBD5E1" stroke-width="1">
-                  <path d="M25 30H78M25 30H78M25 30H78" opacity="0.25" />
-                  <path d="M25 30L78 55M25 55L78 30M25 55L78 55M25 55L78 80" />
-                  <path d="M25 80L78 55M25 80L78 80" />
+                <g stroke="#CBBFAE" stroke-width="1">
+                  <path d="M25 30L78 30M25 30L78 55M25 30L78 80" />
+                  <path d="M25 55L78 30M25 55L78 55M25 55L78 80" />
+                  <path d="M25 80L78 30M25 80L78 55M25 80L78 80" />
                 </g>
-                <g stroke="#94A3B8" stroke-width="1">
+                <g stroke="#B5A995" stroke-width="1">
                   <path d="M102 30L153 20M102 30L153 55M102 30L153 90" />
                   <path d="M102 55L153 20M102 55L153 55M102 55L153 90" />
                   <path d="M102 80L153 20M102 80L153 55M102 80L153 90" />
                 </g>
-                <g fill="#6366F1">
+                <g fill="#7D302F">
                   <circle cx="25" cy="30" r="5" />
                   <circle cx="25" cy="55" r="5" />
                   <circle cx="25" cy="80" r="5" />
                 </g>
-                <g fill="#22D3EE">
+                <g fill="#3D5266">
                   <circle cx="78" cy="30" r="6" />
                   <circle cx="78" cy="55" r="6" />
                   <circle cx="78" cy="80" r="6" />
                 </g>
-                <g fill="#94A3B8">
+                <g fill="#B5A995">
                   <circle cx="102" cy="30" r="4" />
                   <circle cx="102" cy="55" r="4" />
                   <circle cx="102" cy="80" r="4" />
                 </g>
-                <g fill="#F59E0B">
+                <g fill="#A37B2B">
                   <circle cx="153" cy="20" r="3.5" />
                   <circle cx="153" cy="55" r="4.5" />
                   <circle cx="153" cy="90" r="3.5" />
                 </g>
               </svg>
             </div>
-            <h3 class="mt-4 text-sm font-semibold text-slate-700">等待生成个性化推荐</h3>
+            <h3 class="mt-4 text-sm font-semibold text-slate-700">等待生成推荐</h3>
             <p class="mt-1.5 max-w-xs text-center text-[11px] leading-5 text-slate-400">
               选择一位学习者并运行推理，查看 NeuMF 对潜在交互的打分与推荐理由。
             </p>
@@ -347,7 +342,7 @@ onBeforeUnmount(() => {
                   </p>
                 </div>
                 <p class="mt-1 text-[9px] text-slate-400">
-                  {{ result.modelVersion }} · 依据兴趣标签与近期学习行为
+                  {{ result.modelVersion }} · 依据兴趣标签与近期行为
                 </p>
               </div>
               <div class="flex items-center gap-1.5">
@@ -374,10 +369,10 @@ onBeforeUnmount(() => {
               <article
                 v-for="item in result.recommendations"
                 :key="item.item.id"
-                class="group rounded-xl border p-3 transition"
+                class="rounded-xl border p-3 transition"
                 :class="
                   item.rank === 1
-                    ? 'border-indigo-200 bg-indigo-50/40 shadow-[0_8px_30px_-20px_rgba(79,70,229,0.5)]'
+                    ? 'border-[#c99f98] bg-[#fbf1ec]'
                     : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
                 "
               >
@@ -406,7 +401,7 @@ onBeforeUnmount(() => {
                     <div class="mt-2 flex items-center gap-2">
                       <div class="h-1 flex-1 overflow-hidden rounded-full bg-slate-100">
                         <div
-                          class="h-full rounded-full bg-gradient-to-r from-indigo-400 to-cyan-400 transition-all duration-700"
+                          class="h-full bg-[#9a463c] transition-all duration-700"
                           :style="{ width: `${item.score * 100}%` }"
                         />
                       </div>
@@ -455,15 +450,16 @@ onBeforeUnmount(() => {
 
 .ncf-demo {
   overflow: hidden;
-  border-radius: 22px;
-  background: #fff;
+  border-radius: 2px;
+  background: #fffdf8;
 }
 
 .ncf-hero {
   position: relative;
   overflow: hidden;
   padding: 22px 26px 20px;
-  background: #0a1020;
+  background: #17130f;
+  border-bottom: 1px solid #3d3328;
 }
 
 .ncf-body {
@@ -474,8 +470,8 @@ onBeforeUnmount(() => {
 
 .ncf-config {
   padding: 22px;
-  border-right: 1px solid #eef1f6;
-  background: #fafbfd;
+  border-right: 1px solid #ddd2c1;
+  background: #f8f3e9;
 }
 
 .ncf-result {
@@ -487,10 +483,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  color: #6f6456;
+  font-family: var(--app-mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .ncf-step-label span {
@@ -498,11 +496,12 @@ onBeforeUnmount(() => {
   width: 17px;
   height: 17px;
   place-items: center;
-  color: #6366f1;
-  background: #eef2ff;
-  border-radius: 5px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
+  color: #7d302f;
+  background: #f4e8e2;
+  border: 1px solid #d8b8b1;
+  border-radius: 0;
+  font-family: var(--app-mono);
+  font-size: 7px;
 }
 
 .ncf-user-card {
@@ -512,22 +511,21 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 8px 10px;
   color: inherit;
-  background: #fff;
-  border: 1px solid #edf0f5;
-  border-radius: 10px;
+  background: #fffdf8;
+  border: 1px solid #ded4c4;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .ncf-user-card:hover:not(:disabled) {
-  border-color: #d7dce8;
-  transform: translateY(-1px);
+  border-color: #b9ab97;
 }
 
 .ncf-user-card.is-active {
-  background: #fff;
-  border-color: #c7d2fe;
-  box-shadow: 0 6px 20px -14px rgba(79, 70, 229, 0.5);
+  background: #fffdf8;
+  border-color: #c99f98;
+  box-shadow: inset 2px 0 #7d302f;
 }
 
 .ncf-user-card:disabled {
@@ -537,11 +535,12 @@ onBeforeUnmount(() => {
 
 .ncf-feature-chip {
   padding: 3px 8px;
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px solid #eef1f6;
-  border-radius: 6px;
-  font-size: 9px;
+  color: #8d806e;
+  background: #fffdf8;
+  border: 1px solid #ded4c4;
+  border-radius: 0;
+  font-family: var(--app-mono);
+  font-size: 8px;
 }
 
 .ncf-metric-chip {
@@ -549,12 +548,12 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px solid #edf0f5;
-  border-radius: 5px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
+  color: #8d806e;
+  background: #f8f3e9;
+  border: 1px solid #ded4c4;
+  border-radius: 0;
+  font-family: var(--app-mono);
+  font-size: 7.5px;
 }
 
 .ncf-empty,

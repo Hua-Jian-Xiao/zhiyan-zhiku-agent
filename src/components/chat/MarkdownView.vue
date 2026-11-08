@@ -58,7 +58,7 @@ const rendered = computed(() => md.render(props.content))
   margin-left: 3px;
   vertical-align: -0.16em;
   content: '';
-  background: #6366f1;
+  background: #7d302f;
   border-radius: 2px;
   animation: markdown-caret 0.95s steps(2, start) infinite;
 }

@@ -1,4 +1,4 @@
-import { mockKnowledgeChunks, type SeedChunk } from '@/data/mockData'
+import { mockKnowledgeChunks, type SeedChunk } from '@/mock'
 import type { RagConfig, RetrievedChunk } from '@/types'
 
 function hashString(value: string): number {
@@ -45,6 +45,19 @@ function relevanceBoost(query: string, chunk: SeedChunk): number {
   return boost
 }
 
+function modeScore(query: string, chunk: SeedChunk, config: RagConfig, jitter: number): number {
+  const lexical = relevanceBoost(query, chunk)
+  if (config.retrievalMode === 'vector') {
+    // 向量模式只保留语义相似度与轻微随机扰动。
+    return chunk.baseScore * 0.985 + jitter * 0.65
+  }
+  if (config.retrievalMode === 'keyword') {
+    // 关键词模式放大课程术语命中带来的收益。
+    return chunk.baseScore - 0.025 + lexical * 1.45 + jitter
+  }
+  return chunk.baseScore + lexical * 0.92 + jitter
+}
+
 export function rankKnowledgeChunks(query: string, config: RagConfig): RetrievedChunk[] {
   const normalizedQuery = query.trim()
   if (!normalizedQuery) return []
@@ -53,9 +66,10 @@ export function rankKnowledgeChunks(query: string, config: RagConfig): Retrieved
     .map((chunk) => {
       const hash = hashString(`${normalizedQuery}::${chunk.id}`)
       const jitter = ((hash % 1000) / 1000 - 0.5) * 0.016
-      const score = clamp(chunk.baseScore + relevanceBoost(normalizedQuery, chunk) + jitter, 0.5, 0.988)
+      const score = clamp(modeScore(normalizedQuery, chunk, config, jitter), 0.5, 0.988)
       return {
         id: chunk.id,
+        knowledgePointId: chunk.knowledgePointId,
         title: chunk.title,
         course: chunk.course,
         source: chunk.source,

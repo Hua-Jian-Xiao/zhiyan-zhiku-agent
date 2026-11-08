@@ -14,6 +14,7 @@ import type {
 export const defaultRagConfig: RagConfig = {
   topK: 5,
   threshold: 0.72,
+  retrievalMode: 'hybrid',
 }
 
 export const mockCourses: Course[] = [
@@ -26,7 +27,7 @@ export const mockCourses: Course[] = [
     description: '从监督学习到集成方法，建立机器学习的问题建模与评估框架。',
     knowledgePointCount: 56,
     documentCount: 62,
-    color: '#6366f1',
+    color: '#7d302f',
     updatedAt: '2026-11-05',
   },
   {
@@ -38,7 +39,7 @@ export const mockCourses: Course[] = [
     description: '神经网络、反向传播、表示学习与经典网络结构的系统课程。',
     knowledgePointCount: 48,
     documentCount: 58,
-    color: '#0ea5e9',
+    color: '#3d5266',
     updatedAt: '2026-11-06',
   },
   {
@@ -50,7 +51,7 @@ export const mockCourses: Course[] = [
     description: '从词法分析到预训练语言模型，覆盖 NLP 的主流技术脉络。',
     knowledgePointCount: 42,
     documentCount: 49,
-    color: '#14b8a6',
+    color: '#4f6b54',
     updatedAt: '2026-11-04',
   },
   {
@@ -62,7 +63,7 @@ export const mockCourses: Course[] = [
     description: '图像表征、卷积网络、目标检测与视觉理解的核心知识体系。',
     knowledgePointCount: 39,
     documentCount: 46,
-    color: '#f59e0b',
+    color: '#a37b2b',
     updatedAt: '2026-11-03',
   },
   {
@@ -74,7 +75,7 @@ export const mockCourses: Course[] = [
     description: '数据结构、算法设计与复杂度分析，是计算机学科的共同基础。',
     knowledgePointCount: 45,
     documentCount: 53,
-    color: '#8b5cf6',
+    color: '#6b5563',
     updatedAt: '2026-11-02',
   },
   {
@@ -86,7 +87,7 @@ export const mockCourses: Course[] = [
     description: '进程、内存、文件系统与并发控制，理解程序运行的系统底座。',
     knowledgePointCount: 34,
     documentCount: 31,
-    color: '#ef4444',
+    color: '#8a4a3c',
     updatedAt: '2026-10-30',
   },
   {
@@ -98,7 +99,7 @@ export const mockCourses: Course[] = [
     description: '关系模型、SQL、事务与查询优化，构建可靠的数据管理系统认知。',
     knowledgePointCount: 32,
     documentCount: 36,
-    color: '#10b981',
+    color: '#5f6b54',
     updatedAt: '2026-10-29',
   },
   {
@@ -110,7 +111,7 @@ export const mockCourses: Course[] = [
     description: '分层网络体系、TCP/IP 协议族与分布式通信基础。',
     knowledgePointCount: 30,
     documentCount: 27,
-    color: '#ec4899',
+    color: '#6d4f3b',
     updatedAt: '2026-10-27',
   },
 ]
@@ -215,6 +216,7 @@ export interface SeedChunk extends Omit<RetrievedChunk, 'score'> {
 export const mockKnowledgeChunks: SeedChunk[] = [
   {
     id: 'chunk-ml-supervised',
+    knowledgePointId: 'KP-ML-013',
     title: '监督学习：从假设空间到损失函数',
     course: '机器学习',
     source: '《机器学习》周志华 · 第 1 章',
@@ -226,6 +228,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-math-linear',
+    knowledgePointId: 'KP-MATH-007',
     title: '矩阵分解与特征空间',
     course: '数据结构与算法',
     source: '《线性代数及其应用》 · 第 7 章',
@@ -237,6 +240,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-prob-bayes',
+    knowledgePointId: 'KP-ML-004',
     title: '条件概率与贝叶斯推断',
     course: '机器学习',
     source: '《概率论与数理统计》 · 第 1 章',
@@ -248,6 +252,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-ml-gradient',
+    knowledgePointId: 'KP-ML-018',
     title: '梯度下降与反向传播',
     course: '机器学习',
     source: '《深度学习》花书 · 第 4 章',
@@ -259,6 +264,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-python-numpy',
+    knowledgePointId: 'KP-CS-003',
     title: 'NumPy 广播机制与向量化计算',
     course: '数据结构与算法',
     source: '《Python 数据科学手册》 · 第 2 章',
@@ -270,6 +276,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-dl-transformer',
+    knowledgePointId: 'KP-DL-021',
     title: 'Transformer 与自注意力机制',
     course: '深度学习',
     source: '《动手学深度学习》 · 第 11 章',
@@ -281,6 +288,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-rag-pipeline',
+    knowledgePointId: 'KP-NLP-034',
     title: 'RAG：检索增强生成的完整链路',
     course: '自然语言处理',
     source: '《RAG 技术综述》 · 2026 修订版',
@@ -292,6 +300,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-kg-embedding',
+    knowledgePointId: 'KP-NLP-028',
     title: '知识图谱表示学习',
     course: '自然语言处理',
     source: '《知识图谱：方法、实践与应用》 · 第 6 章',
@@ -303,6 +312,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-cv-cnn',
+    knowledgePointId: 'KP-CV-016',
     title: '卷积神经网络与感受野',
     course: '计算机视觉',
     source: '《计算机视觉：算法与应用》 · 第 5 章',
@@ -314,6 +324,7 @@ export const mockKnowledgeChunks: SeedChunk[] = [
   },
   {
     id: 'chunk-rl-mdp',
+    knowledgePointId: 'KP-RL-009',
     title: '马尔可夫决策过程与价值函数',
     course: '机器学习',
     source: '《强化学习导论》 · 第 3 章',
@@ -326,10 +337,10 @@ export const mockKnowledgeChunks: SeedChunk[] = [
 ]
 
 const graphCategories: KnowledgeGraphCategory[] = [
-  { key: 'foundation', label: '数理与编程基础', color: '#6366f1' },
-  { key: 'core', label: '计算机核心', color: '#0ea5e9' },
-  { key: 'advanced', label: '进阶方向', color: '#10b981' },
-  { key: 'llm', label: '大模型与 RAG', color: '#f59e0b' },
+  { key: 'foundation', label: '数理与编程基础', color: '#7d302f' },
+  { key: 'core', label: '计算机核心', color: '#3d5266' },
+  { key: 'advanced', label: '进阶方向', color: '#4f6b54' },
+  { key: 'llm', label: '大模型与 RAG', color: '#a37b2b' },
 ]
 
 export const mockGraphNodes: KnowledgeGraphNode[] = [
@@ -561,7 +572,7 @@ export const mockUsers: NcfUser[] = [
     id: 'u-1001',
     name: '林晓',
     avatar: '林',
-    color: '#6366f1',
+    color: '#7d302f',
     stage: '大二 · 计算机科学',
     interests: ['机器学习', '数学基础', 'Python'],
     recent: ['线性代数 · 特征值', '监督学习概述', 'NumPy 广播'],
@@ -570,7 +581,7 @@ export const mockUsers: NcfUser[] = [
     id: 'u-1002',
     name: '陈默',
     avatar: '陈',
-    color: '#0ea5e9',
+    color: '#3d5266',
     stage: '大三 · 人工智能',
     interests: ['深度学习', 'Transformer', 'NLP'],
     recent: ['自注意力机制', '序列到序列模型', '预训练任务'],
@@ -579,7 +590,7 @@ export const mockUsers: NcfUser[] = [
     id: 'u-1003',
     name: '苏然',
     avatar: '苏',
-    color: '#10b981',
+    color: '#4f6b54',
     stage: '研一 · 数据科学',
     interests: ['RAG', '向量检索', '大模型'],
     recent: ['RAG 链路', '向量数据库选型', '提示工程'],
@@ -588,7 +599,7 @@ export const mockUsers: NcfUser[] = [
     id: 'u-1004',
     name: '周屿',
     avatar: '周',
-    color: '#f59e0b',
+    color: '#a37b2b',
     stage: '大四 · 软件工程',
     interests: ['工程化', '推荐系统', '图算法'],
     recent: ['推荐系统评估', '图嵌入', '模型部署'],

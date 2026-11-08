@@ -2,15 +2,14 @@
 
 > 面向计算机学科的 RAG 智能学习 Agent 工作台
 
-智研知库是一个纯前端可运行的演示项目，把「Agent 流式对话、RAG 引用溯源、知识库配置、检索调试、知识依赖图谱」整合进同一个学习工作台。所有数据均由前端 Mock 生成，无需启动后端服务。
+一套可直接运行的 Vue 3 纯前端演示项目。整体采用 Editorial Magazine Style · 学术杂志风：暖纸色页面、衬线展示字体、墨色与酒红点缀、细线分隔、左侧固定索引导航与卡片化内容区，不做传统后台管理系统。
 
 ## 技术架构
 
 ### 技术栈
 
 - Vue 3 + TypeScript + Vite
-- Pinia
-- Vue Router
+- Pinia / Vue Router
 - Element Plus
 - Tailwind CSS
 - markdown-it + highlight.js
@@ -20,9 +19,9 @@
 
 - **视图层**：Vue 3 组合式 API + Element Plus，页面组件按路由拆分。
 - **状态层**：Pinia 管理登录态、会话与 RAG 参数，并通过 localStorage 持久化。
-- **服务层**：`src/services/` 统一封装 Agent 流式对话、Mock API 与 SSE 解析，视图不直接依赖 Mock 实现。
-- **数据层**：`src/data/mockData.ts` 提供课程、知识片段、知识图谱等演示数据。
-- **工具层**：`src/utils/` 提供检索排序、异步控制、格式化与存储等纯函数。
+- **服务层**：`src/services/` 封装 Agent 流式对话、Mock API 与 SSE 解析，视图不直接依赖 Mock 实现。
+- **数据层**：`src/mock/index.ts` 提供课程、知识点、知识片段、图谱与 NCF 模拟数据。
+- **工具层**：`src/utils/` 提供检索排序、检索模式、异步控制、格式化与存储等纯函数。
 
 ## 环境配置与运行
 
@@ -48,12 +47,7 @@ npm run dev
 
 浏览器访问：<http://localhost:5173>
 
-演示账号已预填：
-
-```text
-账号：admin
-密码：123456
-```
+登录说明：Mock 鉴权，输入任意账号（至少 2 个字符）和密码（至少 6 位）即可进入，例如 `student / 123456`。
 
 ### 环境变量
 
@@ -89,79 +83,82 @@ npm run build
 npm run preview
 ```
 
-## 页面与路由
+## 页面
 
-| 路由 | 页面 | 说明 |
+| 路由 | 页面 | 核心内容 |
 | --- | --- | --- |
-| `/login` | 登录 | 极简账号密码登录，Mock 鉴权，登录态保存在 localStorage |
-| `/workspace` | Agent 对话工作台 | 三栏布局：会话列表、流式聊天、Agent 运行台 |
-| `/knowledge` | 知识库管理 | 课程/知识点统计、课程索引、RAG Top-K 与阈值配置 |
-| `/rag-debug` | RAG 检索调试 | 输入 query，展示召回片段、相似度分数与阶段耗时 |
-| `/graph` | 知识图谱 | ECharts 力导向图，仅呈现客观课程先修关系 |
+| `/login` | 登录 | 左右分栏品牌页，账号 / 密码校验、加载态、错误提示 |
+| `/workspace` | Agent 对话工作台 | 三栏布局、会话管理、逐字符 SSE、Markdown、引用卡片、思考面板 |
+| `/knowledge` | 知识库管理 | 统计卡片、课程 / 知识点标签页与搜索、Top-K / 阈值 / 检索模式 |
+| `/rag-debug` | RAG 检索调试 | 召回片段、原文、相似度进度、来源课程、知识点 ID、阶段耗时 |
+| `/graph` | 知识图谱 | ECharts 力导向依赖图、节点详情卡、领域筛选 |
 
-侧边栏中的 **NCF 推荐 Demo** 是独立弹窗演示，不属于核心 RAG 流程。
+侧边栏的 `NCF推荐Demo` 是独立弹窗演示，不进入主业务。
 
-## 核心实现
+## 已实现能力
 
-### Mock SSE 流式聊天
+### 全局界面
 
-- `src/services/mockAgentServer.ts`：模拟后端 SSE 服务，按 `step`、`tool`、`retrieval`、`citations`、`delta`、`done` 事件逐段推送。
-- `src/services/sse.ts`：实现 `ReadableStream` 的 SSE 帧解析。
-- `src/services/agentService.ts`：UI 唯一依赖的 Agent 服务层，支持 `AbortController` 中断。
+- 统一左侧导航、顶部面包屑、卡片、标签页、按钮、输入框样式。
+- 桌面端顶部栏展示知识空间、Mock SSE 状态；移动端提供抽屉导航。
+- 学术杂志风浅色工作台：暖纸底色、衬线标题、酒红强调色与细线排版，聚焦 RAG 学习与检索调试，不引入旧选课业务模块。
 
-后续对接真实后端时，只需将 `createMockAgentSseStream` 替换为返回 `response.body` 的真实 `fetch` 请求，事件格式保持不变即可。
+### Agent 对话
 
-### Agent 思考面板
+- 左侧新建 / 选择 / 删除会话，当前会话高亮，数据保存在 localStorage。
+- 用户消息右对齐，AI 消息左对齐。
+- AI 回答使用 `markdown-it` 渲染标题、列表、表格、行内代码与代码块（highlight.js），并逐字符流式追加。
+- 每条回答底部展示引用来源卡片：课程名称、知识点 ID、相似度分数、章节与原文片段。
+- 可折叠「Agent 思考过程」：思考内容、工具名称、入参、返回结果、召回知识片段。
+- 底部多行输入框、`Enter / Shift + Enter`、停止生成、快捷按钮：
+  - 生成AI工程师学习路线
+  - 查询机器学习前置知识点
 
-每条 AI 消息保存独立 `AgentTrace`，包括：
+### 知识库管理
 
-- 思考步骤及状态（等待 / 执行中 / 完成）
-- 工具调用记录、入参、出参、耗时
-- 本次检索命中的知识库片段与相似度
+- 顶部展示课程数量、知识点数量、向量片段数量、最后更新时间。
+- 课程列表 / 知识点列表标签页，两个列表均支持本地搜索。
+- RAG 参数表单：Top-K、相似度阈值、混合 / 向量 / 关键词检索模式。
+- 参数通过 Pinia 持久化，并同步给 Agent 与检索调试页。
 
-AI 回答完成后面板会自动折叠，可随时重新展开查看。
+### RAG 检索调试
 
-### RAG 参数共享
-
-Top-K 与相似度阈值保存在 `useRagStore` 中并持久化到 localStorage。知识库管理页、RAG 检索调试页与 Agent 对话工作台共用同一套参数，修改后全局生效。
+- 左侧测试问题、示例问题、检索参数；右侧召回结果。
+- 每条召回结果包含：原文内容、相似度分数与进度条、来源课程、知识点 ID。
+- 展示向量化、召回、重排序与总耗时，帮助评审理解 RAG 内部机制。
+- 支持无结果时一键降低阈值重新检索。
 
 ### 知识图谱
 
-- 23 个知识点、33 条依赖边，分为数理与编程基础、计算机核心、进阶方向、大模型与 RAG 四个领域。
-- 使用 ECharts `graph + force` 布局，支持拖拽、缩放、领域筛选。
-- 点击节点可查看前置知识、后继方向与课程出处。
-- 不包含任何用户掌握度、学习画像或推荐权重数据。
-
-### 状态处理
-
-- 骨架屏：知识库、RAG 检索调试、知识图谱加载态。
-- 空状态：无会话、无检索结果、无引用来源等。
-- 加载态：登录、检索、索引刷新、NCF 推理。
-- 错误提示：服务层异常、流式中断、请求重试。
+- ECharts `graph + force` 渲染 23 个知识点与 33 条客观先修关系。
+- 支持拖拽、缩放、领域筛选。
+- 点击节点后，右侧知识点详情卡显示名称、课程、前置知识、后继方向与说明。
+- 只呈现课程知识结构，不包含任何个性化学习数据。
 
 ## 目录结构
 
 ```text
 src/
 ├── components/
-│   ├── chat/                   # 会话列表、聊天消息、思考面板、引用卡片、输入框等
-│   ├── feedback/               # 通用空状态/错误状态
+│   ├── chat/                   # 会话、消息、引用、思考面板、输入框
+│   ├── feedback/               # 通用空状态 / 错误状态
 │   ├── rag/                    # 检索结果卡片
+│   ├── AppBreadcrumb.vue
 │   ├── AppSidebar.vue
 │   ├── BrandMark.vue
 │   ├── NcfDemoDialog.vue
 │   └── PageHeader.vue
-├── data/
-│   └── mockData.ts             # 课程、知识片段、图谱、NCF 等 Mock 数据
+├── mock/
+│   └── index.ts                # 课程、知识点、知识片段、图谱、NCF 全部模拟数据
 ├── layouts/
 │   └── AppLayout.vue
 ├── router/
 │   └── index.ts
 ├── services/
 │   ├── agentService.ts         # Agent 流式事件入口
-│   ├── mockAgentServer.ts      # Mock SSE 服务端
-│   ├── mockApi.ts              # 知识库、检索、登录、NCF Mock API
-│   └── sse.ts                  # SSE Parser
+│   ├── mockAgentServer.ts      # Mock SSE 服务
+│   ├── mockApi.ts              # 登录、知识库、检索、NCF Mock API
+│   └── sse.ts                  # SSE 帧解析器
 ├── stores/
 │   ├── auth.ts
 │   ├── chat.ts
@@ -174,6 +171,7 @@ src/
 │   ├── async.ts
 │   ├── format.ts
 │   ├── id.ts
+│   ├── rag.ts
 │   ├── retrieval.ts
 │   └── storage.ts
 └── views/
@@ -184,6 +182,19 @@ src/
     └── KnowledgeGraphView.vue
 ```
 
+## Mock SSE
+
+`src/services/mockAgentServer.ts` 通过 `ReadableStream` 生成 `text/event-stream` 事件，`src/services/sse.ts` 完成客户端解析，`src/services/agentService.ts` 向上层派发：
+
+- `step`：思考步骤状态
+- `tool`：工具调用与入参 / 返回
+- `retrieval`：召回知识片段
+- `citations`：引用来源
+- `delta`：单字符文本增量
+- `done`：完成与耗时
+
+对接真实后端时，将 Mock 流的创建替换为真实 `fetch` 返回的 `response.body`，事件协议保持不变即可。
+
 ## 团队信息
 
 | 成员 | 角色 | 主要分工 |
@@ -192,8 +203,9 @@ src/
 
 - 联系方式：1419955217@qq.com
 
-## 说明
+## 状态覆盖
 
-- 这是纯前端 Mock 项目，不包含真实鉴权、后端接口或持久化数据库。
-- 会话、登录态与 RAG 配置保存在浏览器 localStorage 中。
-- 清除站点 localStorage 可恢复初始演示数据。
+- 骨架屏：工作台初始化、知识库、RAG 检索、知识图谱、NCF 推理。
+- 空状态：无会话、无搜索结果、无召回片段、NCF 未运行。
+- 加载状态：登录、刷新索引、检索、流式生成、推荐推理。
+- 错误状态：登录校验、流式中断、请求失败与重试。
