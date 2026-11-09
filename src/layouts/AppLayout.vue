@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Menu } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { ArrowRight, Menu } from '@element-plus/icons-vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import BrandMark from '@/components/BrandMark.vue'
@@ -12,6 +13,59 @@ const route = useRoute()
 const systemStore = useSystemStore()
 const ragStore = useRagStore()
 const mobileSidebarOpen = ref(false)
+let statusTimer: ReturnType<typeof setInterval> | null = null
+
+const databaseStatus = computed(() => {
+  if (systemStore.isLoading) {
+    return {
+      label: '状态同步中',
+      dot: 'bg-[#c9a25a] animate-pulse',
+      text: 'text-[#a58b62]',
+    }
+  }
+  if (systemStore.error) {
+    return {
+      label: '状态异常',
+      dot: 'bg-[#9a463c]',
+      text: 'text-[#9a463c]',
+    }
+  }
+  if (!systemStore.health) {
+    return {
+      label: '状态检查中',
+      dot: 'bg-[#c9a25a] animate-pulse',
+      text: 'text-[#a58b62]',
+    }
+  }
+  if (systemStore.health.database === 'ok') {
+    return {
+      label: '知识库在线',
+      dot: 'bg-[#5c7a60]',
+      text: 'text-[#8d806e]',
+    }
+  }
+  return {
+    label: '数据库离线',
+    dot: 'bg-[#9a463c]',
+    text: 'text-[#9a463c]',
+  }
+})
+
+async function refreshSystemStatus(showToast = true): Promise<void> {
+  if (systemStore.isLoading) return
+  try {
+    await systemStore.loadStats()
+    if (showToast) {
+      if (systemStore.health?.database === 'ok') {
+        ElMessage.success('知识库状态已刷新')
+      } else {
+        ElMessage.warning('知识库连接异常，请检查后端服务')
+      }
+    }
+  } catch {
+    if (showToast) ElMessage.error('知识库状态刷新失败')
+  }
+}
 
 watch(
   () => route.fullPath,
@@ -21,12 +75,20 @@ watch(
 )
 
 onMounted(() => {
-  void systemStore.loadStats().catch(() => {
-    // Pages own their detailed error states; the shell keeps navigation usable.
-  })
+  void refreshSystemStatus(false)
   void ragStore.loadFromServer().catch(() => {
     // The locally cached retrieval configuration remains usable if offline.
   })
+  statusTimer = window.setInterval(() => {
+    if (!document.hidden) void refreshSystemStatus(false)
+  }, 30000)
+})
+
+onBeforeUnmount(() => {
+  if (statusTimer) {
+    window.clearInterval(statusTimer)
+    statusTimer = null
+  }
 })
 </script>
 
@@ -82,12 +144,27 @@ onMounted(() => {
       >
         <AppBreadcrumb />
         <div class="flex shrink-0 items-center gap-4 text-[11px] text-[#8d806e]">
-          <span class="flex items-center gap-2">
-            <span class="h-1.5 w-1.5 rounded-full" :class="systemStore.health?.database === 'ok' ? 'bg-[#5c7a60]' : 'bg-[#9a463c]'" />
-            {{ systemStore.health?.database === 'ok' ? '知识库在线' : '数据库离线' }}
-          </span>
+          <button
+            type="button"
+            class="flex items-center gap-2 outline-none"
+            :class="[databaseStatus.text, systemStore.isLoading ? 'cursor-wait' : 'cursor-pointer']"
+            :aria-label="`${databaseStatus.label}，点击刷新知识库状态`"
+            @click="refreshSystemStatus(true)"
+          >
+            <span class="h-1.5 w-1.5 rounded-full" :class="databaseStatus.dot" />
+            {{ databaseStatus.label }}
+          </button>
           <span class="h-3.5 w-px bg-[#d8cebd]" />
-          <span>{{ systemStore.llmLabel }}</span>
+          <router-link
+            v-if="systemStore.health?.llm.configured"
+            :to="{ name: 'workspace' }"
+            class="inline-flex items-center gap-1 transition hover:text-[#7d302f]"
+            title="打开内置 AI 工作台"
+          >
+            {{ systemStore.llmLabel }}
+            <el-icon :size="10"><ArrowRight /></el-icon>
+          </router-link>
+          <span v-else>{{ systemStore.llmLabel }}</span>
         </div>
       </header>
 

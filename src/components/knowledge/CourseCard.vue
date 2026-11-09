@@ -43,7 +43,7 @@ function openCourse(): void {
     @click="openCourse"
     @keydown.enter.prevent="openCourse"
   >
-    <!-- 封面：优先使用课程海报，缺图或加载失败时使用自动生成的封面 -->
+    <!-- 封面：优先使用课程海报，缺图或加载失败时使用自动封面 -->
     <div class="relative aspect-[16/9] overflow-hidden border-b border-[#e9e1d4]" :style="coverStyle">
       <img
         v-if="hasCover"

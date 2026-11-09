@@ -533,7 +533,6 @@ onBeforeUnmount(() => {
             >
               <div class="pointer-events-none absolute inset-0" aria-hidden="true">
                 <div class="absolute inset-0 dot-grid opacity-[0.11]" />
-                <div class="absolute inset-y-0 left-1/2 w-px bg-[#e4dbcc]" />
                 <span class="absolute left-1/2 top-[6%] -translate-x-1/2 font-serif text-[220px] leading-none text-[#7d302f]/[0.035]">§</span>
                 <div class="absolute inset-x-8 top-8 h-px bg-[#e4dbcc]" />
                 <div class="absolute inset-x-8 bottom-8 h-px bg-[#e4dbcc]" />

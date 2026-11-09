@@ -12,19 +12,19 @@ export const retrievalModeOptions: RetrievalModeOption[] = [
     value: 'hybrid',
     label: '混合检索',
     shortLabel: 'Hybrid',
-    description: '向量语义召回 + 关键词加权，兼顾语义与术语精确性',
+    description: '语义向量 + BM25 关键词 + 覆盖率综合排序，兼顾语义与术语',
   },
   {
     value: 'vector',
     label: '向量检索',
     shortLabel: 'Vector',
-    description: '仅依赖语义向量相似度，适合自然语言描述型问题',
+    description: '以语义向量为主，叠加标题/标签覆盖率，适合自然语言描述',
   },
   {
     value: 'keyword',
     label: '关键词检索',
     shortLabel: 'Keyword',
-    description: '强化课程术语与标签匹配，适合精确概念查询',
+    description: '以 BM25 词法匹配为主，叠加覆盖率，适合精确术语与缩写',
   },
 ]
 

@@ -57,6 +57,13 @@ const navItems: NavItem[] = [
 
 const activeName = computed(() => String(route.name ?? ''))
 
+async function handleSwitchUser(): Promise<void> {
+  const redirect = route.fullPath
+  await authStore.logout()
+  ElMessage.success('已退出当前账号，请登录其他账号')
+  await router.replace({ name: 'login', query: { redirect } })
+}
+
 async function handleLogout(): Promise<void> {
   try {
     await ElMessageBox.confirm('退出后本地会话仍会保留，下次登录可继续查看。', '退出登录', {
@@ -73,6 +80,20 @@ async function handleLogout(): Promise<void> {
   ElMessage.success('已安全退出')
   await router.replace({ name: 'login' })
 }
+
+async function handleAccountCommand(command: string | number | object): Promise<void> {
+  if (command === 'profile') {
+    await router.push({ name: 'profile' })
+    return
+  }
+  if (command === 'switch') {
+    await handleSwitchUser()
+    return
+  }
+  if (command === 'logout') {
+    await handleLogout()
+  }
+}
 </script>
 
 <template>
@@ -82,7 +103,6 @@ async function handleLogout(): Promise<void> {
     <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <div class="absolute inset-0 dot-grid opacity-[0.035]" />
       <div class="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-[#9a463c]/40 to-transparent" />
-      <div class="absolute left-5 top-0 h-24 w-px bg-[#9a463c]/50" />
     </div>
 
     <div class="relative px-5 pb-4 pt-6">
@@ -146,39 +166,64 @@ async function handleLogout(): Promise<void> {
       </div>
 
       <div class="mx-4 mt-6 border-t border-[#31291f] pt-4 text-[11px] text-[#8f8170]">
-        <div class="flex items-center justify-between">
-          <span>{{ systemStore.llmLabel }}</span>
+        <router-link
+          :to="{ name: 'workspace' }"
+          class="flex cursor-pointer items-center justify-between transition hover:text-[#e3d8c7]"
+          title="打开内置 AI 工作台"
+        >
+          <span class="inline-flex items-center gap-1">
+            {{ systemStore.llmLabel }}
+            <el-icon :size="9"><ArrowRight /></el-icon>
+          </span>
           <span class="flex items-center gap-1.5">
             <span class="h-1.5 w-1.5 rounded-full" :class="systemStore.health?.database === 'ok' ? 'bg-[#7a987e]' : 'bg-[#9a463c]'" />
             {{ systemStore.health?.database === 'ok' ? '服务在线' : '服务离线' }}
           </span>
-        </div>
+        </router-link>
       </div>
     </nav>
 
     <div class="relative border-t border-[#31291f] px-4 pb-4 pt-3.5">
       <div class="flex items-center gap-2.5">
-        <div class="grid h-9 w-9 shrink-0 place-items-center border border-[#5c4c3a] bg-[#292118] font-serif text-[14px] text-[#e8dcc9]">
-          {{ authStore.user?.avatarText ?? '访' }}
+        <div class="grid h-9 w-9 shrink-0 place-items-center overflow-hidden border border-[#5c4c3a] bg-[#292118] font-serif text-[14px] text-[#e8dcc9]">
+          <img
+            v-if="authStore.user?.avatarUrl"
+            :src="authStore.user.avatarUrl"
+            alt="用户头像"
+            class="h-full w-full object-cover"
+          />
+          <span v-else>{{ authStore.user?.avatarText ?? '访' }}</span>
         </div>
         <div class="min-w-0 flex-1">
           <p class="truncate text-[12px] font-medium text-[#e3d8c7]">
             {{ authStore.user?.displayName ?? '访客' }}
           </p>
           <p class="mt-0.5 truncate text-[10px] text-[#8f8170]">
-            {{ authStore.user?.role ?? '未登录' }}
+            {{ authStore.profileHeadline }}
           </p>
         </div>
-        <el-tooltip content="退出登录" placement="top" :show-after="300">
+        <el-dropdown
+          trigger="click"
+          placement="top-end"
+          popper-class="zhiyan-account-menu"
+          @command="handleAccountCommand"
+        >
           <button
             type="button"
             class="grid h-7 w-7 place-items-center border border-transparent text-[#8f8170] transition hover:border-[#3b3126] hover:text-[#c8baa6]"
-            aria-label="退出登录"
-            @click="handleLogout"
+            aria-label="账户操作"
+            title="账户操作"
           >
             <el-icon :size="14"><SwitchButton /></el-icon>
           </button>
-        </el-tooltip>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+              <el-dropdown-item command="switch" divided>切换用户</el-dropdown-item>
+              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
       <div class="mt-3 border-t border-[#2b241c] pt-2 text-[10px] text-[#786b5a]">
         服务端会话 · RAG 知识库已连接

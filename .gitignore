@@ -24,10 +24,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# 本地版本快照与压缩包
+# 本地版本快照、归档与交付文档
 /2/
 /3-*/
+/4/
+/legacy/
 *.zip
+/*.docx
 
 # 临时验证产物
 .ui-check/

@@ -12,20 +12,7 @@ withDefaults(
 </script>
 
 <template>
-  <div class="flex min-w-0 items-center gap-3">
-    <div
-      class="relative grid shrink-0 place-items-center border border-[#cdbfa7]/55 bg-[#f4eee2] text-[#682728]"
-      :class="compact ? 'h-9 w-9' : 'h-11 w-11'"
-    >
-      <span
-        class="font-serif leading-none"
-        :class="compact ? 'text-[17px]' : 'text-[22px]'"
-      >
-        知
-      </span>
-      <span class="absolute inset-[3px] border border-[#682728]/18" />
-      <span class="absolute -bottom-[3px] -right-[3px] h-1.5 w-1.5 bg-[#9a463c]" />
-    </div>
+  <div class="flex min-w-0 items-center">
     <div class="min-w-0">
       <div class="flex items-center gap-2">
         <span

@@ -8,6 +8,7 @@ from .models import (
     GraphEdge,
     GraphNode,
     KnowledgePoint,
+    LegacyImportMap,
 )
 
 
@@ -52,3 +53,8 @@ class DocumentChunkAdmin(admin.ModelAdmin):
     list_display = ("uid", "title", "course", "knowledge_point", "embedding_dim")
     list_filter = ("course", "embedding_provider")
     search_fields = ("uid", "title", "content")
+
+
+@admin.register(LegacyImportMap)
+class LegacyImportMapAdmin(admin.ModelAdmin):
+    list_display = ("entity_type", "legacy_table", "legacy_id", "new_uid")

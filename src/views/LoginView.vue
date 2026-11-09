@@ -286,8 +286,17 @@ onMounted(() => {
               </Transition>
             </label>
 
-            <label class="block">
-              <span class="mb-1.5 block text-[12px] font-medium text-[#5b5145]">密码</span>
+            <div class="block">
+              <div class="mb-1.5 flex items-center justify-between gap-2">
+                <span class="text-[12px] font-medium text-[#5b5145]">密码</span>
+                <router-link
+                  v-if="!isRegister"
+                  :to="{ name: 'forgot-password' }"
+                  class="text-[10px] font-medium text-[#7d302f] transition hover:underline"
+                >
+                  忘记密码？
+                </router-link>
+              </div>
               <el-input
                 v-model="password"
                 type="password"
@@ -309,7 +318,7 @@ onMounted(() => {
                   {{ passwordError }}
                 </span>
               </Transition>
-            </label>
+            </div>
 
             <label v-if="isRegister" class="block">
               <span class="mb-1.5 block text-[12px] font-medium text-[#5b5145]">确认密码</span>
@@ -368,8 +377,7 @@ onMounted(() => {
             <p>注册即创建独立的学习空间，会话与检索记录保存在服务端。</p>
           </template>
           <template v-else>
-            <p>演示账号：<span class="font-mono text-[#5b5145]">student / student123</span></p>
-            <p class="mt-1">还没有账号？可切换到上方「注册」创建新账号。</p>
+            <p>还没有账号？可切换到上方「注册」创建新账号。</p>
           </template>
         </div>
       </div>

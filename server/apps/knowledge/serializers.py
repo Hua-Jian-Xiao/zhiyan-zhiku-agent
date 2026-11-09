@@ -39,6 +39,8 @@ def course_payload(course: Course) -> dict:
         if getattr(course, "doc_count", None) is not None
         else course.documents.count(),
         "color": course.color,
+        "legacyCourseId": course.legacy_course_id,
+        "isLegacyImport": course.uid.startswith("legacy-course-"),
         "updatedAt": date_string(course.updated_at),
     }
 

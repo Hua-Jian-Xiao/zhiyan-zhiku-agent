@@ -15,6 +15,7 @@ from apps.knowledge.models import (
     GraphEdge,
     GraphNode,
     KnowledgePoint,
+    LegacyImportMap,
 )
 from apps.knowledge.services.ingest import ingest_document
 from apps.retrieval.models import RagSettings
@@ -22,6 +23,7 @@ from seed.manifest import (
     COURSES,
     GRAPH_CATEGORIES,
     GRAPH_NODES,
+    LEGACY_KP_MAP,
     TAG_KEYWORDS,
 )
 
@@ -112,6 +114,7 @@ def purge_business_data() -> None:
     GraphCategory.objects.all().delete()
     KnowledgePoint.objects.all().delete()
     Course.objects.all().delete()
+    LegacyImportMap.objects.all().delete()
 
 
 def seed_users() -> tuple[User, User]:
@@ -128,6 +131,8 @@ def seed_users() -> tuple[User, User]:
     student.display_name = "林晓"
     student.role = "计算机科学 · 学习者"
     student.avatar_text = "林"
+    student.security_question = "我最喜欢的课程是？"
+    student.set_security_answer("机器学习")
     student.set_password("student123")
     student.save()
 
@@ -140,6 +145,8 @@ def seed_users() -> tuple[User, User]:
     admin.avatar_text = "管"
     admin.is_staff = True
     admin.is_superuser = True
+    admin.security_question = "我的管理口令是？"
+    admin.set_security_answer("zhiyan")
     admin.set_password("zhiyan123")
     admin.save()
     return student, admin
@@ -162,10 +169,18 @@ def seed_courses(student: User) -> dict[str, Course]:
                 "cover_url": item.get("cover_url", ""),
                 "source_url": item.get("source_url", ""),
                 "popularity": item["popularity"],
+                "legacy_course_id": item["legacy_course_id"],
                 "sort_order": order,
             },
         )
         course_map[item["uid"]] = course
+        if item["legacy_course_id"]:
+            LegacyImportMap.objects.update_or_create(
+                entity_type="course",
+                legacy_table="courses",
+                legacy_id=item["legacy_course_id"],
+                defaults={"new_uid": course.uid},
+            )
     return course_map
 
 
@@ -197,10 +212,18 @@ def seed_knowledge_and_documents(
                     "difficulty": "入门" if section["chapter_no"] == 1 else "进阶",
                     "description": _description(section["content"]),
                     "tags": _tags(item, section["content"], section["title"]),
+                    "legacy_node_id": LEGACY_KP_MAP.get(section["title"]),
                     "sort_order": index,
                 },
             )
             all_points.append(point)
+            if point.legacy_node_id:
+                LegacyImportMap.objects.update_or_create(
+                    entity_type="knowledge_point",
+                    legacy_table="knowledge_nodes",
+                    legacy_id=point.legacy_node_id,
+                    defaults={"new_uid": point.uid},
+                )
 
         doc_uid = f"DOC-{item['short_name']}-001"
         document, _ = Document.objects.update_or_create(
@@ -216,6 +239,7 @@ def seed_knowledge_and_documents(
                 "byte_size": markdown_path.stat().st_size,
                 "status": "processing",
                 "uploaded_by": student,
+                "legacy_course_id": item["legacy_course_id"],
             },
         )
         document = ingest_document(document)
@@ -250,10 +274,18 @@ def seed_graph(course_map: dict[str, Course]) -> tuple[int, int]:
                 "related_course": related_course,
                 "related_course_label": item.get("related_course_label", ""),
                 "knowledge_point": point_map.get(item.get("knowledge_point_uid")),
+                "legacy_node_id": item.get("legacy_node_id"),
                 "sort_order": order,
             },
         )
         node_map[item["uid"]] = node
+        if item.get("legacy_node_id"):
+            LegacyImportMap.objects.update_or_create(
+                entity_type="graph_node",
+                legacy_table="knowledge_nodes",
+                legacy_id=item["legacy_node_id"],
+                defaults={"new_uid": node.uid},
+            )
 
     edge_count = 0
     for item in GRAPH_NODES:

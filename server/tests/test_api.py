@@ -1,5 +1,6 @@
 import json
 import re
+from tempfile import TemporaryDirectory
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -264,3 +265,86 @@ class RagApiTests(TestCase):
         deleted = self.client.delete("/api/v1/conversations/conv_test_crud/")
         self.assertEqual(deleted.status_code, 204)
         self.assertFalse(Conversation.objects.filter(id="conv_test_crud").exists())
+
+    def test_profile_update_and_avatar_upload(self):
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            avatar = SimpleUploadedFile(
+                "avatar.png",
+                b"\x89PNG\r\n\x1a\n" + b"0" * 64,
+                content_type="image/png",
+            )
+            response = self.client.patch(
+                "/api/v1/auth/profile/",
+                {
+                    "displayName": "林晓新",
+                    "email": "linxiao@example.com",
+                    "major": "人工智能",
+                    "grade": "本科四年级",
+                    "bio": "研究 RAG 与知识图谱。",
+                    "avatar": avatar,
+                },
+                format="multipart",
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+            user = response.data["user"]
+            self.assertEqual(user["displayName"], "林晓新")
+            self.assertEqual(user["email"], "linxiao@example.com")
+            self.assertIn("/media/avatars/", user["avatarUrl"])
+            self.user.refresh_from_db()
+            self.assertEqual(self.user.display_name, "林晓新")
+            self.assertTrue(self.user.avatar.name)
+
+    def test_change_password(self):
+        wrong = self.client.post(
+            "/api/v1/auth/change-password/",
+            {"oldPassword": "wrong-password", "newPassword": "student456"},
+            format="json",
+        )
+        self.assertEqual(wrong.status_code, 400)
+
+        response = self.client.post(
+            "/api/v1/auth/change-password/",
+            {"oldPassword": "student123", "newPassword": "student456"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        login = APIClient().post(
+            "/api/v1/auth/login/",
+            {"username": "student", "password": "student456"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, 200)
+
+    def test_password_reset_with_security_question(self):
+        client = APIClient()
+        question = client.get("/api/v1/auth/security-question/?username=student")
+        self.assertEqual(question.status_code, 200, question.content)
+        self.assertEqual(question.data["securityQuestion"], "我最喜欢的课程是？")
+
+        wrong = client.post(
+            "/api/v1/auth/reset-password/",
+            {
+                "username": "student",
+                "answer": "错误答案",
+                "newPassword": "student789",
+            },
+            format="json",
+        )
+        self.assertEqual(wrong.status_code, 400)
+
+        reset = client.post(
+            "/api/v1/auth/reset-password/",
+            {
+                "username": "student",
+                "answer": "机器学习",
+                "newPassword": "student789",
+            },
+            format="json",
+        )
+        self.assertEqual(reset.status_code, 200, reset.content)
+        login = client.post(
+            "/api/v1/auth/login/",
+            {"username": "student", "password": "student789"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, 200)

@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { title: '登录' },
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPasswordView.vue'),
+      meta: { title: '找回密码' },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/AppLayout.vue'),
       meta: { requiresAuth: true },
@@ -43,6 +49,12 @@ const router = createRouter({
           name: 'graph',
           component: () => import('@/views/KnowledgeGraphView.vue'),
           meta: { title: '知识图谱' },
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/views/ProfileView.vue'),
+          meta: { title: '个人中心' },
         },
       ],
     },

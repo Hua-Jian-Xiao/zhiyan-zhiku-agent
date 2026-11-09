@@ -23,12 +23,13 @@ import { useSystemStore } from '@/stores/system'
 import { DEFAULT_RAG_CONFIG } from '@/constants/rag'
 import type {
   DocumentJumpRequest,
+  IndexHealth,
   KnowledgeBaseOverview,
   KnowledgePoint,
   RetrievalMode,
 } from '@/types'
 import { isAbortError } from '@/utils/async'
-import { retrievalModeOptions } from '@/utils/rag'
+import { getRetrievalModeOption, retrievalModeOptions } from '@/utils/rag'
 
 const ragStore = useRagStore()
 const systemStore = useSystemStore()
@@ -66,7 +67,7 @@ const stats = computed<StatItem[]>(() => [
     label: '课程数量',
     value: String(overview.value?.courseCount ?? 0),
     suffix: '门',
-    hint: '课程已建索引，部分知识点待补充文档',
+    hint: '全部课程均已建立检索索引',
     icon: Collection,
     iconClass: 'bg-indigo-50 text-indigo-500 border-indigo-100',
     barClass: 'bg-indigo-400',
@@ -88,7 +89,7 @@ const stats = computed<StatItem[]>(() => [
     label: '向量片段数量',
     value: (overview.value?.chunkCount ?? 0).toLocaleString('en-US'),
     suffix: '条',
-    hint: '课程文档已生成向量片段，部分知识点待补充文档',
+    hint: `${overview.value?.documentCount ?? 0} 份课程文档已建立向量索引`,
     icon: Document,
     iconClass: 'bg-emerald-50 text-emerald-500 border-emerald-100',
     barClass: 'bg-emerald-400',
@@ -108,12 +109,90 @@ const stats = computed<StatItem[]>(() => [
   },
 ])
 
+interface IndexBadge {
+  label: string
+  dotClass: string
+  wrapperClass: string
+  details: string
+  issues: string[]
+}
+
+const indexBadge = computed<IndexBadge>(() => {
+  if (errorMessage.value) {
+    return {
+      label: '索引异常',
+      dotClass: 'bg-rose-400',
+      wrapperClass: 'border-rose-100 bg-rose-50 text-rose-600',
+      details: errorMessage.value,
+      issues: [],
+    }
+  }
+
+  const health = overview.value?.indexHealth
+  if (!health) {
+    return isLoading.value
+      ? {
+          label: '索引检查中',
+          dotClass: 'bg-slate-300 animate-pulse',
+          wrapperClass: 'border-slate-200 bg-slate-50 text-slate-500',
+          details: '正在读取知识库索引状态…',
+          issues: [],
+        }
+      : {
+          label: '索引状态未知',
+          dotClass: 'bg-slate-300',
+          wrapperClass: 'border-slate-200 bg-slate-50 text-slate-500',
+          details: '暂未获取到索引健康信息。',
+          issues: [],
+        }
+  }
+
+  const tones: Record<IndexHealth['status'], Pick<IndexBadge, 'dotClass' | 'wrapperClass'>> = {
+    healthy: {
+      dotClass: 'bg-emerald-400',
+      wrapperClass: 'border-emerald-100 bg-emerald-50 text-emerald-600',
+    },
+    indexing: {
+      dotClass: 'bg-amber-400 animate-pulse',
+      wrapperClass: 'border-amber-100 bg-amber-50 text-amber-600',
+    },
+    degraded: {
+      dotClass: 'bg-amber-400',
+      wrapperClass: 'border-amber-100 bg-amber-50 text-amber-600',
+    },
+    error: {
+      dotClass: 'bg-rose-400',
+      wrapperClass: 'border-rose-100 bg-rose-50 text-rose-600',
+    },
+  }
+  const tone = tones[health.status] ?? tones.degraded
+
+  return {
+    label: health.label,
+    ...tone,
+    details: `${health.documentCount} 份文档 · ${health.chunkCount} 个片段 · 空向量 ${health.emptyEmbeddingCount} · 最后更新 ${health.lastSyncedAt}`,
+    issues: health.issues,
+  }
+})
+
 const configDirty = computed(
   () =>
     draftTopK.value !== ragStore.config.topK ||
     Math.abs(draftThreshold.value - ragStore.config.threshold) > 0.0001 ||
     draftMode.value !== ragStore.config.retrievalMode,
 )
+
+const strategyMode = computed(() => getRetrievalModeOption(draftMode.value))
+
+const strategyFormula = computed(() => {
+  if (draftMode.value === 'vector') {
+    return '0.84 × 语义分 + 0.16 × 覆盖率'
+  }
+  if (draftMode.value === 'keyword') {
+    return '0.82 × BM25 + 0.18 × 覆盖率'
+  }
+  return '0.54 × 语义分 + 0.34 × BM25 + 0.12 × 覆盖率'
+})
 
 const normalizedKeyword = computed(() => keyword.value.trim().toLowerCase())
 
@@ -294,10 +373,28 @@ onBeforeUnmount(() => {
         description="管理计算机学科课程索引，调整 RAG 的召回范围、相似度门槛与检索模式。参数会实时同步到 Agent 工作台和检索调试页。"
       >
         <template #actions>
-          <span class="hidden items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-medium text-emerald-600 sm:inline-flex">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            索引健康
-          </span>
+          <el-tooltip placement="bottom" :show-after="300">
+            <template #content>
+              <div class="max-w-[280px] space-y-1 text-[11px] leading-5">
+                <p class="font-medium">{{ indexBadge.label }}</p>
+                <p class="opacity-80">{{ indexBadge.details }}</p>
+                <ul v-if="indexBadge.issues.length" class="list-disc pl-4 opacity-90">
+                  <li v-for="issue in indexBadge.issues" :key="issue">{{ issue }}</li>
+                </ul>
+                <p class="opacity-60">点击徽标刷新索引状态</p>
+              </div>
+            </template>
+            <button
+              type="button"
+              class="hidden cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[9px] font-medium transition hover:brightness-[0.98] sm:inline-flex"
+              :class="indexBadge.wrapperClass"
+              :aria-label="indexBadge.label"
+              @click="loadKnowledgeBase(true)"
+            >
+              <span class="h-1.5 w-1.5 rounded-full" :class="indexBadge.dotClass" />
+              {{ indexBadge.label }}
+            </button>
+          </el-tooltip>
           <el-button :loading="isLoading" @click="loadKnowledgeBase(true)">
             <el-icon v-if="!isLoading" class="mr-1"><Refresh /></el-icon>
             刷新索引
@@ -662,15 +759,29 @@ onBeforeUnmount(() => {
               </div>
 
               <div class="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-                <div class="flex items-center gap-1.5">
-                  <span class="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                  <p class="text-[8px] font-semibold text-slate-500">当前检索策略</p>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                    <p class="text-[8px] font-semibold text-slate-500">当前检索策略</p>
+                  </div>
+                  <span
+                    class="rounded border px-1.5 py-0.5 text-[7px] font-medium"
+                    :class="configDirty ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-emerald-200 bg-emerald-50 text-emerald-600'"
+                  >
+                    {{ configDirty ? '草稿参数' : '已同步' }}
+                  </span>
                 </div>
                 <p class="mt-1.5 font-mono text-[9px] leading-4 text-slate-500">
-                  {{ draftMode }}<br />
-                  recall(top_k={{ draftTopK }})<br />
-                  → filter(score ≥ {{ draftThreshold.toFixed(2) }})<br />
-                  → rerank → context
+                  {{ strategyMode.label }} · {{ strategyMode.shortLabel }}<br />
+                  召回：{{ strategyFormula }}<br />
+                  重排：0.92 × 基础分 + 0.08 × 覆盖率 + 领域词加权<br />
+                  排序 → 过滤 ≥ {{ draftThreshold.toFixed(2) }} → Top-{{ draftTopK }}
+                </p>
+                <p
+                  class="mt-2 text-[8px] leading-4"
+                  :class="configDirty ? 'text-amber-500' : 'text-emerald-600'"
+                >
+                  {{ configDirty ? '草稿参数保存后才会应用到 Agent 与检索调试。' : '参数已同步到 Agent 工作台与 RAG 检索调试。' }}
                 </p>
                 <p class="mt-2 border-t border-slate-200/60 pt-2 text-[8px] leading-4 text-slate-400">
                   阈值越高，回答越保守；阈值过低可能引入不相关证据。

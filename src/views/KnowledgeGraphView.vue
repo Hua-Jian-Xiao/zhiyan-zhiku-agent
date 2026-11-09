@@ -37,8 +37,11 @@ const activeCategories = ref<GraphCategory[]>([])
 const selectedNodeId = ref<string | null>(null)
 const chartContainer = ref<HTMLDivElement | null>(null)
 const chartInstance = shallowRef<ECharts | null>(null)
+const isPulsing = ref(false)
 let controller: AbortController | null = null
 let resizeObserver: ResizeObserver | null = null
+let pulseTimers: ReturnType<typeof setTimeout>[] = []
+let pulseToken = 0
 
 const nodeCount = computed(() => graphData.value?.nodes.length ?? 0)
 const edgeCount = computed(() => graphData.value?.edges.length ?? 0)
@@ -300,8 +303,60 @@ function buildChartOption(): EChartsOption {
   }
 }
 
+function clearPulseTimers(): void {
+  pulseTimers.forEach((timer) => clearTimeout(timer))
+  pulseTimers = []
+}
+
+function triggerGraphPulse(): void {
+  const chart = chartInstance.value
+  if (!chart || visibleNodes.value.length === 0) return
+
+  clearPulseTimers()
+  pulseToken += 1
+  const token = pulseToken
+  isPulsing.value = true
+  chart.dispatchAction({ type: 'downplay', seriesIndex: 0 })
+
+  const step = 85
+  visibleNodes.value.forEach((_, index) => {
+    pulseTimers.push(
+      window.setTimeout(() => {
+        if (token !== pulseToken || !chartInstance.value) return
+        chartInstance.value.dispatchAction({ type: 'downplay', seriesIndex: 0 })
+        chartInstance.value.dispatchAction({
+          type: 'highlight',
+          seriesIndex: 0,
+          dataIndex: index,
+        })
+      }, index * step),
+    )
+    pulseTimers.push(
+      window.setTimeout(() => {
+        if (token !== pulseToken || !chartInstance.value) return
+        chartInstance.value.dispatchAction({
+          type: 'downplay',
+          seriesIndex: 0,
+          dataIndex: index,
+        })
+      }, index * step + 620),
+    )
+  })
+
+  pulseTimers.push(
+    window.setTimeout(() => {
+      if (token !== pulseToken) return
+      chartInstance.value?.dispatchAction({ type: 'downplay', seriesIndex: 0 })
+      isPulsing.value = false
+      pulseTimers = []
+    }, visibleNodes.value.length * step + 800),
+  )
+}
+
 function renderChart(): void {
   if (!graphData.value || !chartContainer.value) return
+  clearPulseTimers()
+  isPulsing.value = false
   if (!chartInstance.value) {
     chartInstance.value = echarts.init(chartContainer.value, undefined, {
       renderer: 'canvas',
@@ -393,6 +448,7 @@ onBeforeUnmount(() => {
   controller?.abort()
   resizeObserver?.disconnect()
   resizeObserver = null
+  clearPulseTimers()
   chartInstance.value?.dispose()
   chartInstance.value = null
 })
@@ -406,13 +462,25 @@ onBeforeUnmount(() => {
         description="以力导向图呈现计算机学科知识点之间的客观先修关系。图谱只描述课程知识结构，不包含个性化数据。"
       >
         <template #actions>
-          <span
+          <button
             v-if="graphData"
-            class="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-[8px] text-slate-500 sm:inline-flex"
+            type="button"
+            class="hidden cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[8px] transition sm:inline-flex"
+            :class="
+              isPulsing
+                ? 'graph-pulse-active border-indigo-200 bg-indigo-50 text-indigo-600'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-600'
+            "
+            :aria-label="`触发知识图谱动态效果，当前 ${nodeCount} 个节点、${edgeCount} 条边`"
+            :title="isPulsing ? '动态效果进行中…' : '点击触发图谱脉冲'"
+            @click="triggerGraphPulse"
           >
-            <span class="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+            <span
+              class="h-1.5 w-1.5 rounded-full"
+              :class="isPulsing ? 'animate-ping bg-rose-400' : 'bg-indigo-400'"
+            />
             {{ nodeCount }} NODES · {{ edgeCount }} EDGES
-          </span>
+          </button>
           <el-button :loading="isLoading" @click="loadGraph(true)">
             <el-icon v-if="!isLoading" class="mr-1"><Refresh /></el-icon>
             刷新图谱
@@ -764,6 +832,20 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.graph-pulse-active {
+  animation: graph-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes graph-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(125, 48, 47, 0);
+  }
+  45% {
+    box-shadow: 0 0 0 4px rgba(125, 48, 47, 0.12);
+  }
+}
+
 .graph-canvas {
   background:
     linear-gradient(90deg, rgba(125, 48, 47, 0.025) 1px, transparent 1px),

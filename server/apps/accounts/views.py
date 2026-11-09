@@ -12,7 +12,12 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
-from .serializers import UserProfileSerializer
+from .serializers import (
+    ChangePasswordSerializer,
+    ProfileUpdateSerializer,
+    ResetPasswordSerializer,
+    UserProfileSerializer,
+)
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{2,32}$")
 
@@ -124,3 +129,121 @@ class LogoutView(APIView):
     def post(self, request):
         # The demo intentionally keeps tokens stateless; the client discards them.
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProfileView(APIView):
+    def get(self, request):
+        return Response({"user": UserProfileSerializer(request.user).data})
+
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = request.user
+        update_fields: list[str] = []
+
+        if "displayName" in data:
+            user.display_name = data["displayName"].strip()
+            user.avatar_text = (user.display_name[:1] or user.username[:1]).upper()
+            update_fields.extend(["display_name", "avatar_text"])
+        if "email" in data:
+            user.email = data["email"].strip()
+            update_fields.append("email")
+        if "major" in data:
+            user.major = data["major"].strip()
+            update_fields.append("major")
+        if "grade" in data:
+            user.grade = data["grade"].strip()
+            update_fields.append("grade")
+        if "bio" in data:
+            user.bio = data["bio"].strip()
+            update_fields.append("bio")
+        if "securityQuestion" in data:
+            user.security_question = data["securityQuestion"].strip()
+            user.set_security_answer(data["securityAnswer"])
+            update_fields.extend(["security_question", "security_answer_hash"])
+
+        old_avatar = user.avatar if user.avatar and user.avatar.name else None
+        avatar = data.get("avatar")
+        if avatar is not None:
+            user.avatar = avatar
+            update_fields.append("avatar")
+
+        if update_fields:
+            user.save(update_fields=update_fields)
+        if avatar is not None and old_avatar and old_avatar.name != user.avatar.name:
+            try:
+                old_avatar.delete(save=False)
+            except OSError:
+                pass
+
+        return Response({"user": UserProfileSerializer(user).data})
+
+
+class ChangePasswordView(APIView):
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not request.user.check_password(serializer.validated_data["oldPassword"]):
+            return Response(
+                {"detail": "当前密码不正确", "code": "INVALID_OLD_PASSWORD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        request.user.set_password(serializer.validated_data["newPassword"])
+        request.user.save(update_fields=["password"])
+        return Response({"detail": "密码已更新，请使用新密码登录"})
+
+
+class SecurityQuestionView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        username = str(request.query_params.get("username", "")).strip()
+        if not username:
+            return Response(
+                {"detail": "请输入账号", "code": "MISSING_USERNAME"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = User.objects.filter(username__iexact=username).first()
+        if not user or not user.security_question or not user.security_answer_hash:
+            return Response(
+                {
+                    "detail": "账号不存在或未设置安全问题，请登录后在个人中心设置",
+                    "code": "SECURITY_QUESTION_NOT_SET",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "username": user.username,
+                "securityQuestion": user.security_question,
+            }
+        )
+
+
+class ResetPasswordView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data["username"].strip()
+        user = User.objects.filter(username__iexact=username).first()
+        if not user or not user.security_answer_hash:
+            return Response(
+                {
+                    "detail": "账号不存在或未设置安全问题",
+                    "code": "SECURITY_QUESTION_NOT_SET",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not user.check_security_answer(serializer.validated_data["answer"]):
+            return Response(
+                {"detail": "安全问题答案不正确", "code": "INVALID_SECURITY_ANSWER"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.set_password(serializer.validated_data["newPassword"])
+        user.save(update_fields=["password"])
+        return Response({"detail": "密码已重置，请使用新密码登录"})

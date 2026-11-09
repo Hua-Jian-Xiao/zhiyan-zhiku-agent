@@ -16,6 +16,7 @@ class Course(models.Model):
     source_url = models.CharField(max_length=500, blank=True, default="")
     video_url = models.CharField(max_length=500, blank=True, default="")
     popularity = models.PositiveIntegerField(default=0)
+    legacy_course_id = models.BigIntegerField(null=True, blank=True)
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -45,6 +46,7 @@ class KnowledgePoint(models.Model):
     difficulty = models.CharField(max_length=8, choices=DIFFICULTY_CHOICES, default="入门")
     description = models.TextField(blank=True, default="")
     tags = models.JSONField(default=list, blank=True)
+    legacy_node_id = models.BigIntegerField(null=True, blank=True)
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -119,6 +121,7 @@ class GraphNode(models.Model):
     knowledge_point = models.ForeignKey(
         KnowledgePoint, null=True, blank=True, on_delete=models.SET_NULL, related_name="graph_nodes"
     )
+    legacy_node_id = models.BigIntegerField(null=True, blank=True)
     sort_order = models.IntegerField(default=0)
 
     class Meta:
@@ -179,6 +182,7 @@ class Document(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name="uploaded_documents"
     )
+    legacy_course_id = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -229,3 +233,20 @@ class DocumentChunk(models.Model):
 
     def __str__(self) -> str:
         return self.uid
+
+
+class LegacyImportMap(models.Model):
+    entity_type = models.CharField(max_length=24)
+    legacy_table = models.CharField(max_length=64)
+    legacy_id = models.BigIntegerField()
+    new_uid = models.CharField(max_length=80)
+    checksum = models.CharField(max_length=64, blank=True, default="")
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "legacy_import_map"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["entity_type", "legacy_table", "legacy_id"], name="uniq_legacy_map"
+            )
+        ]

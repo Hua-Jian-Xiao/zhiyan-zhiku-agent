@@ -6,7 +6,7 @@
 
 ## 1. 项目简介
 
-智研知库不是传统课程管理后台，而是一套围绕“课程知识库 + RAG 检索 + 流式 Agent”构建的计算机学科学习工作台。
+智研知库是一套围绕“课程知识库 + RAG 检索 + 流式 Agent”构建的计算机学科学习工作台。
 
 当前版本完成了从纯前端 Mock 到真实前后端联通的升级：
 
@@ -17,8 +17,11 @@
 - DeepSeek 流式回答，可配置离线模板兜底
 - ECharts 知识依赖图谱
 - 检索日志与阶段耗时可观测
+- 个人中心与安全问题找回密码
 
-## 2. 技术栈
+## 2. 技术架构
+
+### 2.1 技术栈
 
 | 层 | 技术 |
 | --- | --- |
@@ -27,6 +30,14 @@
 | AI | DeepSeek OpenAI-compatible Chat API（可关闭） |
 | 检索 | 本地中文 n-gram 哈希向量 + BM25 + Hybrid Rerank |
 | 数据库 | MySQL 8.0 主库 `zhiyan_zhiku`，支持 SQLite 开发兜底 |
+
+### 2.2 分层设计
+
+- **视图层**：Vue 3 组合式 API + Element Plus，页面组件按路由拆分。
+- **状态层**：Pinia 管理登录态、会话、RAG 参数与系统状态，并通过 localStorage 持久化。
+- **服务层**：`src/services/` 封装 JWT、REST API、Agent SSE 与流式解析，视图不直接依赖接口细节。
+- **业务层**：Django app 按账号、知识库、检索、Agent 拆分，服务逻辑集中于 `services/`。
+- **数据层**：MySQL 持久化课程、知识点、文档分块、会话轨迹与引用；SQLite 用于本地兜底。
 
 ## 3. 功能页面
 
@@ -37,6 +48,8 @@
 | `/knowledge` | 知识库管理 | 课程/知识点/文档库标签页、搜索、文档上传/重索引/删除、RAG 参数 |
 | `/rag-debug` | RAG 检索调试 | query → 召回片段、原文、来源、知识点 ID、相似度、阶段耗时 |
 | `/graph` | 知识图谱 | ECharts 力导向图、领域筛选、节点详情、客观先修依赖 |
+| `/profile` | 个人中心 | 头像上传、昵称/邮箱/专业/简介、安全问题、修改密码 |
+| `/forgot-password` | 找回密码 | 通过安全问题验证并重置密码 |
 
 ## 4. 快速启动
 
@@ -121,7 +134,54 @@ student / student123
 admin   / zhiyan123
 ```
 
-### 4.5 无 MySQL 时的 SQLite 兜底
+安全问题找回密码演示：
+
+```text
+student → 我最喜欢的课程是？ / 机器学习
+admin   → 我的管理口令是？ / zhiyan
+```
+
+用户资料与安全问题哈希保存在 MySQL `users` 表；头像文件保存在 `server/media/avatars/`。
+
+### 4.5 导入课程数据集到知识库管理
+
+项目内置 132 门课程数据集，可全量导入项目数据库，并在「知识库管理 → 课程」中直接显示。命令默认读取本机数据集数据库，连接参数使用 `server/.env` 的 MySQL 配置：
+
+```bash
+cd server
+python manage.py import_legacy_courses --dry-run          # 先预览课程数量
+python manage.py import_legacy_courses                    # 正式导入课程
+python manage.py import_legacy_knowledge_points           # 为课程补齐知识点
+python manage.py generate_legacy_documents                # 为每门课程生成知识纲要文档并建立向量索引
+```
+
+如需单独指定数据集数据库连接，可使用 `LEGACY_DB_NAME`、`LEGACY_DB_HOST`、`LEGACY_DB_PORT`、`LEGACY_DB_USER`、`LEGACY_DB_PASSWORD` 环境变量。
+
+导入规则：
+
+- 已存在的 5 门精选核心课程保留原名、简介和排序，只补全封面/链接等空字段；
+- 其余课程使用稳定 UID，重复执行只更新、不重复创建；
+- 数据集课程先展示在核心课程之后，按学习人数排序；
+- 课程卡片使用数据集海报；没有同名课程海报时使用最接近的课程海报，海报加载失败时自动生成课程封面；点击任意卡片会在新标签页打开对应「学堂在线」课程；
+- `import_legacy_knowledge_points` 基于数据集的 `knowledge_nodes` / `course_knowledge` 为课程补齐知识点；没有关联节点的课程会生成「课程导论」兜底，保证 135 门课程全部有知识点；
+- `generate_legacy_documents` 为每门课程生成一份「课程知识纲要」Markdown，并走正常解析、切分、向量化流程；文档库达到 135 份，覆盖 135 门课程；
+- 当前规模：135 门课程、221 个知识点、135 份文档、600 个向量片段；
+- 生成文档后卡片显示「已索引」，知识点详情中的关联片段也会自动填充；
+- `seed_all --reset` 会清空课程表、知识点表和文档表，重置种子后请重新执行上面四条命令。
+
+#### 导入数据存储位置
+
+| 数据 | 存储位置 |
+| --- | --- |
+| 课程 | MySQL `zhiyan_zhiku.courses` |
+| 知识点 | MySQL `zhiyan_zhiku.knowledge_points` |
+| 文档元数据 | MySQL `zhiyan_zhiku.documents` |
+| 文档片段与向量 | MySQL `zhiyan_zhiku.document_chunks`，`embedding` 字段为 JSON 向量 |
+| 数据集 ID → 项目 UID 映射 | MySQL `zhiyan_zhiku.legacy_import_map` |
+| 数据集课程生成的知识纲要原文 | `server/media/generated/legacy_docs/*.md` |
+| 8 门核心课程讲义原文 | `server/seed/content/*.md` |
+
+### 4.6 无 MySQL 时的 SQLite 兜底
 
 将 `server/.env` 改为：
 
@@ -138,9 +198,23 @@ python manage.py seed_all --reset
 python manage.py runserver 127.0.0.1:8000
 ```
 
-### 4.6 不配置 DeepSeek 时
+### 4.7 不配置 DeepSeek 时
 
 保持 `DEEPSEEK_API_KEY` 为空，或设置 `LLM_PROVIDER=local`。后端会使用基于真实检索证据的本地模板生成流式回答，引用、思考步骤、工具调用和检索日志仍正常工作，方便离线评审。
+
+### 4.8 环境变量与依赖清单
+
+环境变量模板：
+
+- 前端：`.env.example`（`VITE_API_BASE_URL`，默认 `/api/v1`）
+- 后端：`server/.env.example`（数据库、DeepSeek、Embedding 等配置）
+
+本地分别复制为 `.env.local` 与 `server/.env` 后填写。所有 `.env` 文件均已被 `.gitignore` 忽略，仓库中只保留模板；**请勿提交真实 API Key 或数据库密码**。
+
+依赖清单：
+
+- 前端：`package.json`（Vue 3、Vite、Pinia、Element Plus、ECharts、markdown-it 等）
+- 后端：`server/requirements.txt`（Django 6、DRF、SimpleJWT、PyMySQL、openai、pypdf、python-docx 等）
 
 ## 5. 系统结构
 
@@ -168,16 +242,29 @@ python manage.py runserver 127.0.0.1:8000
 │  ├─ apps/agent/                    # 会话、消息、Agent SSE、引用、运行轨迹
 │  ├─ apps/core/                     # health、public stats、seed 命令
 │  ├─ seed/content/                  # 8 门课程的真实讲义 Markdown
-│  ├─ seed/manifest.py               # 课程、知识点与图谱种子数据
+│  ├─ seed/manifest.py               # 课程、图谱、数据集字段映射
 │  └─ tests/                         # API / SSE / 检索 / 上传测试
 └─ sql/                              # MySQL 建库、建表、种子、校验 SQL
 ```
 
-种子规模：8 门核心课程、50 个知识点、8 份课程讲义、50 个向量片段、23 个图谱节点、33 条客观先修边。
+种子规模：8 门核心课程、50 个知识点、8 份课程讲义、50 个向量片段、23 个图谱节点、33 条客观先修边。课程数据集包含 132 门课程元数据、58 个保留知识点、37 条先修边和 126 条课程—知识点关系；核心 RAG 课程仍为 8 门。执行数据集导入链路后，数据库达到 135 门课程、221 个知识点、135 份文档、600 个向量片段，覆盖 135 门课程。
 
 ## 6. 数据库设计
 
-### 6.1 RAG 数据表
+### 6.1 课程数据集字段映射
+
+| 数据集字段 | 本项目字段 | 处理 |
+| --- | --- | --- |
+| `courses` | `courses` | 保留课程编号、名称、教师、学校、简介、类型、封面、课程链接、视频链接；新增 uid、short_name、color、数值 popularity、排序和时间戳 |
+| `knowledge_nodes` | `knowledge_points` | 保留名称、描述、难度；新增课程、章节、序号、标签、稳定知识点 ID、源节点 ID |
+| `knowledge_edges` | `graph_nodes` + `graph_edges` | 保留先修边结构；补充 Transformer、LLM、RAG、向量数据库等节点；新增可读 reason |
+| `course_knowledge` | 课程与知识点关联 | 重组为课程索引和知识点章节关系 |
+
+### 6.2 数据范围说明
+
+本项目只使用课程、知识点、先修关系和课程知识结构数据；推荐、选课、收藏、学习历史、学习画像等业务不在本项目范围内。
+
+### 6.3 新增 RAG 表
 
 | 表 | 作用 |
 | --- | --- |
@@ -188,6 +275,7 @@ python manage.py runserver 127.0.0.1:8000
 | `agent_runs` / `agent_steps` / `agent_tool_calls` | Agent 运行、思考步骤、工具调用与耗时 |
 | `retrieval_logs` / `retrieval_log_items` | 每次检索的参数、候选数、召回分数、阶段耗时 |
 | `rag_settings` | 每用户 Top-K / 阈值 / 检索模式 |
+| `legacy_import_map` | 数据集 ID → 项目 UID 溯源映射 |
 
 ## 7. API 摘要
 
@@ -280,7 +368,9 @@ npm run build
 
 - MySQL 8 没有原生向量类型，当前使用 JSON 持久化 embedding + Python 精确余弦检索，适合省赛 Demo 与千级片段；更大规模可替换为 pgvector / Milvus / Qdrant，API 不需要变化。
 - PDF/DOCX 依赖 `pypdf` / `python-docx`；TXT / Markdown 无需额外组件。
+- 本项目不包含推荐系统；问答与检索由 RAG-Agent 完成。
 - 上传是同步解析，适合现场演示；生产环境可将 `ingest_document` 放入 Celery/RQ 任务。
+- 课程数据集没有完整的课程讲义内容，因此 RAG 课程内容由 8 份课程讲义种子重新建设，并通过知识点与文档索引补充检索证据。
 - DeepSeek Key 仅存放在 `server/.env`，已被 `.gitignore` 排除；请勿提交或写入数据库/SQL/README。
 
 ## 12. 团队信息

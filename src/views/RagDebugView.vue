@@ -21,6 +21,7 @@ import type { RetrievalMode, RetrievalResponse } from '@/types'
 import { isAbortError } from '@/utils/async'
 import {
   getRetrievalModeLabel,
+  getRetrievalModeOption,
   retrievalModeOptions,
 } from '@/utils/rag'
 
@@ -85,7 +86,7 @@ const metrics = computed(() => {
     {
       label: '重排序',
       value: `${result.metrics.rerankMs} ms`,
-      hint: 'Cross encoder',
+      hint: 'Heuristic rerank',
       icon: Filter,
       tone: 'text-amber-500 bg-amber-50 border-amber-100',
     },
@@ -94,6 +95,17 @@ const metrics = computed(() => {
 
 const highestScore = computed(() => response.value?.chunks[0]?.score ?? 0)
 const currentModeLabel = computed(() => getRetrievalModeLabel(ragStore.config.retrievalMode))
+const currentModeOption = computed(() => getRetrievalModeOption(retrievalMode.value))
+
+const modeFormula = computed(() => {
+  if (retrievalMode.value === 'vector') {
+    return '0.84 × 语义分 + 0.16 × 覆盖率'
+  }
+  if (retrievalMode.value === 'keyword') {
+    return '0.82 × BM25 + 0.18 × 覆盖率'
+  }
+  return '0.54 × 语义分 + 0.34 × BM25 + 0.12 × 覆盖率'
+})
 
 async function handleSearch(): Promise<void> {
   const normalized = query.value.trim()
@@ -296,12 +308,17 @@ onBeforeUnmount(() => {
                   {{ mode.label }}
                 </button>
               </div>
+              <p class="mt-1.5 text-[7.5px] leading-4 text-slate-400">
+                {{ currentModeOption.description }}
+              </p>
             </div>
 
             <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2">
               <p class="font-mono text-[8px] leading-4 text-slate-500">
-                mode={{ retrievalMode }}<br />
-                recall(k={{ topK }}) → filter(score ≥ {{ threshold.toFixed(2) }}) → rerank
+                {{ currentModeOption.label }} · {{ retrievalMode }}<br />
+                召回：{{ modeFormula }}<br />
+                重排：0.92 × 基础分 + 0.08 × 覆盖率 + 领域词加权<br />
+                排序 → 过滤 ≥ {{ threshold.toFixed(2) }} → Top-{{ topK }}
               </p>
             </div>
             <router-link
@@ -378,7 +395,6 @@ onBeforeUnmount(() => {
           >
             <div class="pointer-events-none absolute inset-0" aria-hidden="true">
               <div class="absolute inset-0 dot-grid opacity-[0.12]" />
-              <div class="absolute inset-y-8 left-1/2 w-px bg-[#e2d9ca]" />
               <span class="absolute left-1/2 top-10 -translate-x-1/2 font-serif text-[180px] leading-none text-[#7d302f]/[0.035]">§</span>
               <div class="absolute inset-x-8 top-8 h-px bg-[#e2d9ca]" />
             </div>
@@ -406,14 +422,18 @@ onBeforeUnmount(() => {
                 让 RAG 不再是一个黑盒。
               </p>
 
-              <div class="mx-auto mt-7 flex max-w-[520px] flex-wrap items-center justify-center gap-1.5">
+              <div class="mx-auto mt-7 flex max-w-[620px] flex-wrap items-center justify-center gap-1.5">
                 <span class="pipeline-step"><b>01</b> Query</span>
                 <el-icon :size="10" class="text-slate-300"><ArrowRight /></el-icon>
                 <span class="pipeline-step"><b>02</b> Embedding</span>
                 <el-icon :size="10" class="text-slate-300"><ArrowRight /></el-icon>
-                <span class="pipeline-step"><b>03</b> Top-K</span>
+                <span class="pipeline-step"><b>03</b> Recall</span>
                 <el-icon :size="10" class="text-slate-300"><ArrowRight /></el-icon>
                 <span class="pipeline-step"><b>04</b> Rerank</span>
+                <el-icon :size="10" class="text-slate-300"><ArrowRight /></el-icon>
+                <span class="pipeline-step"><b>05</b> Filter</span>
+                <el-icon :size="10" class="text-slate-300"><ArrowRight /></el-icon>
+                <span class="pipeline-step"><b>06</b> Top-K</span>
               </div>
 
               <div class="mt-7 flex flex-wrap justify-center gap-2 text-[8px] text-slate-400">
@@ -449,7 +469,7 @@ onBeforeUnmount(() => {
                     <span class="text-slate-200">·</span>
                     <span>阈值 {{ response.config.threshold.toFixed(2) }}</span>
                     <span class="text-slate-200">·</span>
-                    <span>MMR Diversity On</span>
+                    <span>Heuristic Rerank</span>
                   </div>
                 </div>
                 <div class="shrink-0 text-right">

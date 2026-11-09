@@ -179,6 +179,7 @@ CREATE TABLE `courses` (
   `source_url` varchar(500) NOT NULL,
   `video_url` varchar(500) NOT NULL,
   `popularity` int unsigned NOT NULL,
+  `legacy_course_id` bigint DEFAULT NULL,
   `sort_order` int NOT NULL,
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) NOT NULL,
@@ -293,6 +294,7 @@ CREATE TABLE `documents` (
   `status` varchar(16) NOT NULL,
   `chunk_count` int NOT NULL,
   `error_message` longtext NOT NULL,
+  `legacy_course_id` bigint DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) NOT NULL,
   `course_id` bigint NOT NULL,
@@ -348,6 +350,7 @@ CREATE TABLE `graph_nodes` (
   `description` longtext NOT NULL,
   `difficulty` varchar(8) NOT NULL,
   `related_course_label` varchar(64) NOT NULL,
+  `legacy_node_id` bigint DEFAULT NULL,
   `sort_order` int NOT NULL,
   `category_key` varchar(16) NOT NULL,
   `related_course_id` bigint DEFAULT NULL,
@@ -390,6 +393,7 @@ CREATE TABLE `knowledge_points` (
   `difficulty` varchar(8) NOT NULL,
   `description` longtext NOT NULL,
   `tags` json NOT NULL,
+  `legacy_node_id` bigint DEFAULT NULL,
   `sort_order` int NOT NULL,
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) NOT NULL,
@@ -403,6 +407,20 @@ CREATE TABLE `knowledge_points` (
   CONSTRAINT `knowledge_points_chk_1` CHECK ((`chapter_no` >= 0))
 ) ENGINE=InnoDB AUTO_INCREMENT=101 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `legacy_import_map`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `legacy_import_map` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `entity_type` varchar(24) NOT NULL,
+  `legacy_table` varchar(64) NOT NULL,
+  `legacy_id` bigint NOT NULL,
+  `new_uid` varchar(80) NOT NULL,
+  `checksum` varchar(64) NOT NULL,
+  `imported_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_legacy_map` (`entity_type`,`legacy_table`,`legacy_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

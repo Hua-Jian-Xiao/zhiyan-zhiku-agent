@@ -4,6 +4,29 @@ export interface UserProfile {
   displayName: string
   role: string
   avatarText: string
+  avatarUrl: string
+  email: string
+  major: string
+  grade: string
+  bio: string
+  securityQuestion: string
+  hasSecurityQuestion: boolean
+}
+
+export interface ProfileUpdatePayload {
+  displayName?: string
+  email?: string
+  major?: string
+  grade?: string
+  bio?: string
+  securityQuestion?: string
+  securityAnswer?: string
+  avatar?: File | null
+}
+
+export interface SecurityQuestionResponse {
+  username: string
+  securityQuestion: string
 }
 
 export interface AuthSession {
@@ -36,6 +59,8 @@ export interface Course {
   knowledgePointCount: number
   documentCount: number
   color: string
+  legacyCourseId: number | null
+  isLegacyImport: boolean
   updatedAt: string
 }
 
@@ -77,6 +102,20 @@ export interface DocumentJumpRequest {
   nonce: number
 }
 
+export interface IndexHealth {
+  status: 'healthy' | 'indexing' | 'degraded' | 'error'
+  label: string
+  issues: string[]
+  database: string
+  documentCount: number
+  readyDocumentCount: number
+  failedDocumentCount: number
+  processingDocumentCount: number
+  chunkCount: number
+  emptyEmbeddingCount: number
+  lastSyncedAt: string
+}
+
 export interface KnowledgeBaseOverview {
   courses: Course[]
   knowledgePoints: KnowledgePoint[]
@@ -85,6 +124,7 @@ export interface KnowledgeBaseOverview {
   chunkCount: number
   documentCount: number
   lastSyncedAt: string
+  indexHealth?: IndexHealth
 }
 
 export interface RetrievedChunk {

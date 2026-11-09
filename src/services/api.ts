@@ -10,9 +10,11 @@ import type {
   KnowledgePoint,
   KnowledgePointDetail,
   KnowledgePointListResponse,
+  ProfileUpdatePayload,
   PublicStats,
   RagConfig,
   RetrievalResponse,
+  SecurityQuestionResponse,
   UserProfile,
 } from '@/types'
 import { request } from '@/services/http'
@@ -52,6 +54,60 @@ export async function fetchMe(): Promise<{ user: UserProfile }> {
 
 export async function logout(): Promise<void> {
   return request<void>('/auth/logout/', { method: 'POST', body: {} })
+}
+
+export async function updateProfile(
+  payload: ProfileUpdatePayload,
+): Promise<{ user: UserProfile }> {
+  const form = new FormData()
+  const fields: Array<[string, string | undefined]> = [
+    ['displayName', payload.displayName],
+    ['email', payload.email],
+    ['major', payload.major],
+    ['grade', payload.grade],
+    ['bio', payload.bio],
+    ['securityQuestion', payload.securityQuestion],
+    ['securityAnswer', payload.securityAnswer],
+  ]
+  for (const [key, value] of fields) {
+    if (value !== undefined) form.append(key, value)
+  }
+  if (payload.avatar) form.append('avatar', payload.avatar)
+  return request<{ user: UserProfile }>('/auth/profile/', {
+    method: 'PATCH',
+    body: form,
+  })
+}
+
+export async function changePassword(payload: {
+  oldPassword: string
+  newPassword: string
+}): Promise<{ detail: string }> {
+  return request<{ detail: string }>('/auth/change-password/', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export async function fetchSecurityQuestion(
+  username: string,
+): Promise<SecurityQuestionResponse> {
+  return request<SecurityQuestionResponse>(
+    `/auth/security-question/${queryString({ username })}`,
+    { auth: false },
+  )
+}
+
+export async function resetPassword(payload: {
+  username: string
+  answer: string
+  newPassword: string
+}): Promise<{ detail: string }> {
+  return request<{ detail: string }>('/auth/reset-password/', {
+    method: 'POST',
+    body: payload,
+    auth: false,
+  })
 }
 
 export async function fetchPublicStats(): Promise<PublicStats> {

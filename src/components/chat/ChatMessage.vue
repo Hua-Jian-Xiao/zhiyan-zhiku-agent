@@ -71,9 +71,15 @@ async function copyContent(): Promise<void> {
       </div>
     </div>
     <div
-      class="mt-0.5 grid h-7 w-7 shrink-0 place-items-center border border-[#c9bdab] bg-[#f8f1e5] font-serif text-[11px] text-[#682728]"
+      class="mt-0.5 grid h-7 w-7 shrink-0 place-items-center overflow-hidden border border-[#c9bdab] bg-[#f8f1e5] font-serif text-[11px] text-[#682728]"
     >
-      {{ authStore.user?.avatarText ?? '我' }}
+      <img
+        v-if="authStore.user?.avatarUrl"
+        :src="authStore.user.avatarUrl"
+        alt="用户头像"
+        class="h-full w-full object-cover"
+      />
+      <span v-else>{{ authStore.user?.avatarText ?? '我' }}</span>
     </div>
   </div>
 
